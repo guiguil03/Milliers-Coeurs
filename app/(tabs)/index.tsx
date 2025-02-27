@@ -1,74 +1,152 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity } from 'react-native';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
+import { Ionicons } from '@expo/vector-icons';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const FeaturedCard = ({ title, image, description }) => (
+  <TouchableOpacity style={styles.featuredCard}>
+    <Image source={{ uri: image }} style={styles.featuredImage} />
+    <ThemedView style={styles.featuredContent}>
+      <ThemedText style={styles.featuredTitle}>{title}</ThemedText>
+      <ThemedText style={styles.featuredDescription}>{description}</ThemedText>
+    </ThemedView>
+  </TouchableOpacity>
+);
+
+const QuickAction = ({ icon, title, onPress }) => (
+  <TouchableOpacity style={styles.quickAction} onPress={onPress}>
+    <ThemedView style={styles.quickActionIcon}>
+      <Ionicons name={icon} size={24} color="#2196F3" />
+    </ThemedView>
+    <ThemedText style={styles.quickActionTitle}>{title}</ThemedText>
+  </TouchableOpacity>
+);
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <Header />
+      <ScrollView style={styles.content}>
+        <ThemedView style={styles.mainContent}>
+          <ThemedText style={styles.welcomeText}>Bonjour, John! 👋</ThemedText>
+          
+          <ThemedView style={styles.quickActions}>
+            <QuickAction icon="camera-outline" title="Nouvelle photo" />
+            <QuickAction icon="people-outline" title="Amis" />
+            <QuickAction icon="bookmark-outline" title="Sauvegardés" />
+            <QuickAction icon="search-outline" title="Explorer" />
+          </ThemedView>
+
+          <ThemedText style={styles.sectionTitle}>À la une</ThemedText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredScroll}>
+            <FeaturedCard
+              title="Photographie"
+              image="https://via.placeholder.com/300x200"
+              description="Découvrez les dernières tendances en photographie"
+            />
+            <FeaturedCard
+              title="Tutoriels"
+              image="https://via.placeholder.com/300x200"
+              description="Apprenez de nouvelles techniques"
+            />
+            <FeaturedCard
+              title="Événements"
+              image="https://via.placeholder.com/300x200"
+              description="Participez aux prochains événements"
+            />
+          </ScrollView>
+
+          <ThemedText style={styles.sectionTitle}>Activité récente</ThemedText>
+          <ThemedView style={styles.activityList}>
+            {/* Activités récentes ici */}
+          </ThemedView>
+        </ThemedView>
+      </ScrollView>
+      <Footer />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  stepContainer: {
-    gap: 8,
+  content: {
+    flex: 1,
+  },
+  mainContent: {
+    padding: 20,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  quickAction: {
+    alignItems: 'center',
+    width: '23%',
+  },
+  quickActionIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#e3f2fd',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  quickActionTitle: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  featuredScroll: {
+    marginBottom: 30,
+  },
+  featuredCard: {
+    width: 280,
+    marginRight: 15,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  featuredImage: {
+    width: '100%',
+    height: 150,
+  },
+  featuredContent: {
+    padding: 15,
+  },
+  featuredTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  featuredDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  activityList: {
+    marginTop: 10,
   },
 });
