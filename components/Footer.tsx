@@ -14,7 +14,7 @@ export const Footer: React.FC<FooterProps> = () => {
   };
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.navbar}>
         <Link href="/" asChild>
           <TouchableOpacity 
@@ -62,6 +62,7 @@ export const Footer: React.FC<FooterProps> = () => {
           </TouchableOpacity>
         </Link>
 
+
         <Link href="/profile" asChild>
           <TouchableOpacity 
             style={styles.navItem}
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#FF69B4',
+    backgroundColor: '#E0485A',
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
