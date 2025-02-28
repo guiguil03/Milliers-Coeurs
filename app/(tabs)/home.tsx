@@ -21,7 +21,7 @@ const FeaturedCard = ({ title, image, description }) => (
   </TouchableOpacity>
 );
 
-export default function HomePage() {
+export default function HomeContent() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.mainContent}>

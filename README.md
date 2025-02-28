@@ -1,50 +1,74 @@
-# Welcome to your Expo app 👋
+# Mon Application Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Une application mobile moderne construite avec React Native et Expo.
 
-## Get started
+## Structure du Projet
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+├── components/
+│   ├── layout/         # Composants de mise en page (Header, Footer)
+│   ├── themed/         # Composants avec thème (ThemedText, ThemedView)
+│   └── ui/
+│       ├── buttons/    # Boutons et actions
+│       ├── cards/      # Cartes et conteneurs
+│       └── navigation/ # Composants de navigation
+├── config/
+│   └── AppConfig.ts    # Configuration globale de l'application
+├── constants/
+│   └── styles.ts       # Styles globaux et thèmes
+├── screens/
+│   ├── home/          # Écran d'accueil et ses composants
+│   ├── profile/       # Écran de profil et ses composants
+│   └── settings/      # Écran des paramètres et ses composants
+├── types/
+│   └── navigation.ts  # Types TypeScript pour la navigation
+└── utils/            # Utilitaires et helpers
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Fonctionnalités
 
-## Learn more
+- Navigation entre les pages avec Expo Router
+- Design moderne et responsive
+- Thème personnalisable
+- Composants réutilisables
+- Support TypeScript complet
 
-To learn more about developing your project with Expo, look at the following resources:
+## Installation
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. Cloner le repository
+2. Installer les dépendances :
+```bash
+npm install
+```
 
-## Join the community
+3. Lancer l'application :
+```bash
+npx expo start
+```
 
-Join our community of developers creating universal apps.
+## Technologies Utilisées
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- React Native
+- Expo
+- TypeScript
+- Expo Router
+- React Navigation
+- Ionicons
+
+## Développement
+
+Pour ajouter une nouvelle page :
+
+1. Créer un nouveau dossier dans `src/screens/`
+2. Ajouter la route dans `app/(tabs)/_layout.tsx`
+3. Mettre à jour les types dans `src/types/navigation.ts`
+
+## Conventions de Code
+
+- Utiliser TypeScript pour tous les nouveaux fichiers
+- Suivre les conventions de nommage :
+  - PascalCase pour les composants
+  - camelCase pour les fonctions et variables
+  - snake_case pour les fichiers de configuration
+- Utiliser les composants Themed* pour la cohérence visuelle

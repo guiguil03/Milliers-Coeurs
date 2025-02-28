@@ -1,40 +1,34 @@
 import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, SafeAreaView, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 
 interface HeaderProps {}
 
-const Header: React.FC<HeaderProps> = () => {
+export const Header: React.FC<HeaderProps> = () => {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.headerText}>Mon Application</Text>
+        <Image source={require('../assets/images/logo.png')} style={{ width: 40, height: 40 }} />
+        <Ionicons name="person" size={24} color="black" />
       </View>
+      
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: '#f8f9fa',
-  },
   header: {
-    backgroundColor: '#f8f9fa',
-    paddingTop: 10,
-    paddingBottom: 15,
+    height: 60,
+
+    display:'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
-    alignItems: 'center',
-    height: 60,
-    justifyContent: 'center',
   },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#212529',
-  },
+  
 });
-
-export default Header;
