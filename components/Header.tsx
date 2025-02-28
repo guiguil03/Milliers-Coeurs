@@ -10,7 +10,9 @@ export const Header: React.FC<HeaderProps> = () => {
     <SafeAreaView>
       <StatusBar style="dark" />
       <View style={styles.header}>
+
         <Image source={require('../assets/images/logo.png')} style={{ width: 40, height: 40 }} />
+        <Text style={styles.Titre}> Milliers de Coeurs</Text>
         <Ionicons name="person" size={24} color="black" />
       </View>
       
@@ -30,5 +32,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
+  Titre:{
+    fontSize: 20,
+    fontWeight: 'bold',
+  }
   
 });
