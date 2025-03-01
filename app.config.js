@@ -12,10 +12,10 @@ module.exports = {
     slug: "milliers-de-coeurs",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/images/icon.png",
     userInterfaceStyle: "light",
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/images/splash-icon.png",
       resizeMode: "contain",
       backgroundColor: "#FF69B4"
     },
@@ -27,21 +27,25 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#FF69B4"
       }
     },
     web: {
-      favicon: "./assets/favicon.png"
+      favicon: "./assets/images/favicon.png"
     },
+    scheme: "milliersdecoeurs",
+    newArchEnabled: true,
     extra: {
       // Variables Firebase
-      firebaseApiKey: process.env.FIREBASE_API_KEY,
-      firebaseAuthDomain: process.env.FIREBASE_AUTH_DOMAIN,
-      firebaseProjectId: process.env.FIREBASE_PROJECT_ID,
-      firebaseStorageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-      firebaseMessagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-      firebaseAppId: process.env.FIREBASE_APP_ID,
+      firebaseApiKey: process.env.FIREBASE_API_KEY || "AIzaSyDIJyjyh2j9pUzgRhUZLeRlzj23FDHQBiw",
+      firebaseAuthDomain: process.env.FIREBASE_AUTH_DOMAIN || "millecoeurs-ba7a7.firebaseapp.com",
+      firebaseDatabaseURL: process.env.FIREBASE_DATABASE_URL || "https://millecoeurs-ba7a7-default-rtdb.firebaseio.com",
+      firebaseProjectId: process.env.FIREBASE_PROJECT_ID || "millecoeurs-ba7a7",
+      firebaseStorageBucket: process.env.FIREBASE_STORAGE_BUCKET || "millecoeurs-ba7a7.firebasestorage.app",
+      firebaseMessagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "397224772460",
+      firebaseAppId: process.env.FIREBASE_APP_ID || "1:397224772460:web:b994c9511b12b9329a2949",
+      firebaseMeasurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-3BY2NJZWC4",
       
       // Autres variables d'environnement si nécessaire
       eas: {

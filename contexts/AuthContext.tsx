@@ -9,8 +9,8 @@ interface AuthContextType {
   profile: IProfile | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: UserData) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (userData: UserData) => Promise<User>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
 }

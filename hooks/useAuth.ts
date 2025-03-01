@@ -64,11 +64,12 @@ export function useAuth() {
   }, []);
 
   // Fonction de connexion
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     try {
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
-      await loginUser(email, password);
+      const user = await loginUser(email, password);
       // L'état sera mis à jour par le listener onAuthStateChanged
+      return user;
     } catch (error: any) {
       setAuthState(prev => ({ 
         ...prev, 
@@ -80,11 +81,12 @@ export function useAuth() {
   };
 
   // Fonction d'inscription
-  const register = async (userData: UserData) => {
+  const register = async (userData: UserData): Promise<User> => {
     try {
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
-      await registerUser(userData);
+      const user = await registerUser(userData);
       // L'état sera mis à jour par le listener onAuthStateChanged
+      return user;
     } catch (error: any) {
       setAuthState(prev => ({ 
         ...prev, 

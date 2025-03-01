@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getAnalytics } from 'firebase/analytics';
 import Constants from 'expo-constants';
 
 // Obtenir les variables d'environnement d'Expo
@@ -10,18 +11,55 @@ const expoConstants = Constants.expoConfig?.extra || {};
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || expoConstants.firebaseApiKey || "YOUR_API_KEY",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || expoConstants.firebaseAuthDomain || "YOUR_AUTH_DOMAIN",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || expoConstants.firebaseProjectId || "YOUR_PROJECT_ID",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || expoConstants.firebaseStorageBucket || "YOUR_STORAGE_BUCKET",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || expoConstants.firebaseMessagingSenderId || "YOUR_MESSAGING_SENDER_ID",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || expoConstants.firebaseAppId || "YOUR_APP_ID"
+  apiKey: "AIzaSyDIJyjyh2j9pUzgRhUZLeRlzj23FDHQBiw",
+  authDomain: "millecoeurs-ba7a7.firebaseapp.com",
+  databaseURL: "https://millecoeurs-ba7a7-default-rtdb.firebaseio.com",
+  projectId: "millecoeurs-ba7a7",
+  storageBucket: "millecoeurs-ba7a7.firebasestorage.app",
+  messagingSenderId: "397224772460",
+  appId: "1:397224772460:web:b994c9511b12b9329a2949",
+  measurementId: "G-3BY2NJZWC4"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Vérifier si la configuration est valide
+const isValidConfig = (config: any) => {
+  return Object.values(config).every(value => 
+    value && typeof value === 'string' && !value.includes("YOUR_")
+  );
+};
 
-export { app, auth, db, storage };
+if (!isValidConfig(firebaseConfig)) {
+  console.error("⚠️ CONFIGURATION FIREBASE INVALIDE:", 
+    Object.entries(firebaseConfig)
+      .filter(([_, value]) => !value || typeof value !== 'string' || value.includes("YOUR_"))
+      .map(([key]) => key)
+      .join(", ")
+  );
+}
+
+console.log("Initialisation de Firebase avec la configuration:", JSON.stringify(firebaseConfig, null, 2));
+
+// Initialize Firebase
+let app, auth, db, storage, analytics;
+
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  
+  // Initialiser Analytics uniquement sur les plateformes qui le supportent
+  try {
+    analytics = getAnalytics(app);
+    console.log("✅ Firebase Analytics initialisé avec succès!");
+  } catch (analyticsError) {
+    console.log("ℹ️ Firebase Analytics non initialisé - peut ne pas être supporté sur cette plateforme");
+  }
+  
+  console.log("✅ Firebase initialisé avec succès!");
+} catch (error) {
+  console.error("❌ ERREUR lors de l'initialisation de Firebase:", error);
+  throw error;
+}
+
+export { app, auth, db, storage, analytics };

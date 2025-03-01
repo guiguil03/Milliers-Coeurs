@@ -1,37 +1,31 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet, View, SafeAreaView } from 'react-native';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import HomeScreen from './screens/HomeScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import SettingsScreen from './screens/SettingsScreen';
+import { View, Text, StyleSheet } from 'react-native';
 
-type RootStackParamList = {
-  Home: undefined;
-  Profile: undefined;
-  Settings: undefined;
-};
-
-const Stack = createStackNavigator<RootStackParamList>();
+// Ce fichier n'est pas utilisé car l'application utilise Expo Router
+// Le point d'entrée principal est défini dans package.json comme "expo-router/entry"
+// et la structure de l'application est définie dans app/_layout.tsx
 
 export default function App() {
+  console.log("Ce fichier App.tsx n'est pas utilisé dans cette application.");
+  
   return (
-    <NavigationContainer>
-        <Header />
-       
-        <Footer />
-    </NavigationContainer>
+    <View style={styles.container}>
+      <Text style={styles.text}>
+        Ce fichier App.tsx n'est pas utilisé. L'application utilise Expo Router avec app/_layout.tsx comme structure principale.
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  content: {
-    flex: 1,
-  },
+  text: {
+    fontSize: 16,
+    textAlign: 'center',
+  }
 });
