@@ -43,7 +43,7 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.transportItem}>  
           <Text style={styles.transportLabel}>Permifiée</Text>
           <Switch
-            trackColor={{ false: "#767577", true: "#FF69B4" }}
+            trackColor={{ false: "#767577", true: "#E0485A" }}
             onValueChange={() => setIsPermifiee(previousState => !previousState)}
             value={isPermifiee}
           />
@@ -51,7 +51,7 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.transportItem}>  
           <Text style={styles.transportLabel}>Véhiculée</Text>
           <Switch
-            trackColor={{ false: "#767577", true: "#FF69B4" }}
+            trackColor={{ false: "#767577", true: "#E0485A" }}
             onValueChange={() => setIsVehiculee(previousState => !previousState)}
             value={isVehiculee}
           />
@@ -86,7 +86,7 @@ const ProfileScreen: React.FC = () => {
                   key={i}
                   name="star" 
                   size={16} 
-                  color={i < competence.level ? "#FF69B4" : "#e0e0e0"} 
+                  color={i < competence.level ? "#E0485A" : "#e0e0e0"} 
                 />
               ))}
             </View>

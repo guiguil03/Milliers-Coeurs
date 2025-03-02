@@ -43,7 +43,7 @@ export default function ProfilePage() {
         <View style={styles.transportItem}>  
           <Text style={styles.transportLabel}>Permifiée</Text>
           <Switch
-            trackColor={{ false: "#767577", true: "#FF69B4" }}
+            trackColor={{ false: "#767577", true: "#E0485A" }}
             onValueChange={() => setIsPermifiee(previousState => !previousState)}
             value={isPermifiee}
           />
@@ -51,7 +51,7 @@ export default function ProfilePage() {
         <View style={styles.transportItem}>  
           <Text style={styles.transportLabel}>Véhiculée</Text>
           <Switch
-            trackColor={{ false: "#767577", true: "#FF69B4" }}
+            trackColor={{ false: "#767577", true: "#E0485A" }}
             onValueChange={() => setIsVehiculee(previousState => !previousState)}
             value={isVehiculee}
           />
@@ -68,7 +68,7 @@ export default function ProfilePage() {
         
         {Object.entries(profile.historique).map(([key, value], index) => (
           <View key={index} style={styles.historyItem}>
-            <Ionicons name="checkmark-circle" size={24} color="#FF69B4" />
+            <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
             <Text style={styles.historyText}>{value.toString()}</Text>
           </View>
         ))}
@@ -85,7 +85,7 @@ export default function ProfilePage() {
                 key={i} 
                 name={i < rating ? "star" : "star-outline"} 
                 size={18} 
-                color={i < rating ? "#FF69B4" : "#ddd"} 
+                color={i < rating ? "#E0485A" : "#ddd"} 
                 style={{ marginRight: 3 }}
               />
             );
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: '#FF69B4',
+    borderColor: '#E0485A',
   },
   name: {
     fontSize: 22,
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FF69B4',
+    color: '#E0485A',
   },
   statLabel: {
     fontSize: 12,

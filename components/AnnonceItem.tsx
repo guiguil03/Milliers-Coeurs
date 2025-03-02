@@ -1,64 +1,85 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Annonce } from '../data/annonces';
+import { Annonce } from '../services/annonceFirebaseService';
 
-interface AnnonceItemProps extends Annonce {}
+// Propriétés nécessaires pour le composant
+interface AnnonceItemProps {
+  annonce: Annonce;
+  onPress?: () => void;
+}
 
-const AnnonceItem = ({ 
-  logo, 
-  organisation, 
-  temps, 
-  description, 
-  date, 
-  important 
-}: AnnonceItemProps) => (
-  <View style={styles.annonceContainer}>
-    <View style={styles.header}>
-      <View style={styles.orgInfo}>
-        <View style={[styles.logo, { backgroundColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' }]}>
-          {logo ? (
-            <Image source={{ uri: logo }} style={styles.logo} />
-          ) : (
-            <Ionicons name="person" size={24} color="#999" />
-          )}
-        </View>
-        <View style={styles.orgText}>
-          <Text style={styles.orgName}>{organisation} a publié...</Text>
-          <Text style={styles.timeAgo}>{temps}</Text>
+const AnnonceItem: React.FC<AnnonceItemProps> = ({ 
+  annonce,
+  onPress 
+}) => {
+  // S'assurer que l'annonce existe et extraire ses propriétés avec des valeurs par défaut
+  if (!annonce) {
+    return null; // Ne rien afficher si l'annonce est undefined
+  }
+  
+  const { 
+    logo, 
+    organisation = 'Organisation', 
+    description = 'Aucune description', 
+    important = 'Information importante'
+  } = annonce;
+  
+  // Simulation d'un temps (à remplacer par un calcul réel du temps écoulé)
+  const temps = "il y a quelques heures"; 
+
+  return (
+    <TouchableOpacity 
+      style={styles.annonceContainer} 
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={styles.header}>
+        <View style={styles.orgInfo}>
+          <View style={[styles.logo, { backgroundColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' }]}>
+            {logo ? (
+              <Image source={{ uri: logo }} style={styles.logo} />
+            ) : (
+              <Ionicons name="person" size={24} color="#999" />
+            )}
+          </View>
+          <View style={styles.orgText}>
+            <Text style={styles.orgName}>{organisation} a publié...</Text>
+            <Text style={styles.timeAgo}>{temps}</Text>
+          </View>
         </View>
       </View>
-    </View>
-    
-    <View style={styles.content}>
-      <Text style={styles.description}>
-        {description} <Text style={styles.important}>{important}</Text> !
-      </Text>
-    </View>
-    
-    <View style={styles.actions}>
-      <TouchableOpacity style={[styles.actionButton, styles.repondreButton]}>
-        <Text style={styles.actionText}>RÉPONDRE</Text>
-        <Ionicons name="chatbubble-outline" size={18} color="#333" />
-      </TouchableOpacity>
       
-      <TouchableOpacity style={[styles.actionButton, styles.reserverButton]}>
-        <Text style={styles.actionText}>RÉSERVER</Text>
-        <Ionicons name="calendar-outline" size={18} color="#333" />
-      </TouchableOpacity>
+      <View style={styles.content}>
+        <Text style={styles.description}>
+          {description} <Text style={styles.important}>{important}</Text> !
+        </Text>
+      </View>
       
-      <TouchableOpacity style={[styles.actionButton, styles.partagerButton]}>
-        <Text style={styles.actionText}>PARTAGER</Text>
-        <Ionicons name="arrow-redo-outline" size={18} color="#333" />
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={[styles.actionButton, styles.favorisButton]}>
-        <Text style={styles.actionText}>FAVORIS</Text>
-        <Ionicons name="heart-outline" size={18} color="#333" />
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+      <View style={styles.actions}>
+        <TouchableOpacity style={[styles.actionButton, styles.repondreButton]}>
+          <Text style={styles.actionText}>RÉPONDRE</Text>
+          <Ionicons name="chatbubble-outline" size={18} color="#333" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={[styles.actionButton, styles.reserverButton]}>
+          <Text style={styles.actionText}>RÉSERVER</Text>
+          <Ionicons name="calendar-outline" size={18} color="#333" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={[styles.actionButton, styles.partagerButton]}>
+          <Text style={styles.actionText}>PARTAGER</Text>
+          <Ionicons name="arrow-redo-outline" size={18} color="#333" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={[styles.actionButton, styles.favorisButton]}>
+          <Text style={styles.actionText}>FAVORIS</Text>
+          <Ionicons name="heart-outline" size={18} color="#333" />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   annonceContainer: {
@@ -128,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF9800',
   },
   favorisButton: {
-    backgroundColor: '#FF69B4',
+    backgroundColor: '#E0485A',
   },
   actionText: {
     marginRight: 5,

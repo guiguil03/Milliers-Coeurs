@@ -28,27 +28,27 @@ export default function ExplorerPage() {
 
       <View style={styles.categoriesContainer}>
         <TouchableOpacity style={styles.categoryCard}>
-          <Ionicons name="paw-outline" size={36} color="#FF69B4" />
+          <Ionicons name="paw-outline" size={36} color="#E0485A" />
           <Text style={styles.categoryTitle}>Animaux</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.categoryCard}>
-          <Ionicons name="people-outline" size={36} color="#FF69B4" />
+          <Ionicons name="people-outline" size={36} color="#E0485A" />
           <Text style={styles.categoryTitle}>Social</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.categoryCard}>
-          <Ionicons name="leaf-outline" size={36} color="#FF69B4" />
+          <Ionicons name="leaf-outline" size={36} color="#E0485A" />
           <Text style={styles.categoryTitle}>Environnement</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.categoryCard}>
-          <Ionicons name="book-outline" size={36} color="#FF69B4" />
+          <Ionicons name="book-outline" size={36} color="#E0485A" />
           <Text style={styles.categoryTitle}>Éducation</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.categoryCard}>
-          <Ionicons name="medical-outline" size={36} color="#FF69B4" />
+          <Ionicons name="medical-outline" size={36} color="#E0485A" />
           <Text style={styles.categoryTitle}>Santé</Text>
         </TouchableOpacity>
       </View>

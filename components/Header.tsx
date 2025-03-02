@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = () => {
         <TouchableOpacity onPress={handleAuthPress} style={styles.authButton}>
           {shouldShowDisplayName ? (
             <View style={styles.userContainer}>
-              <Ionicons name="person-circle" size={22} color="#FF69B4" />
+              <Ionicons name="person-circle" size={22} color="#E0485A" />
               <Text style={styles.userName}>{displayName}</Text>
             </View>
           ) : (
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#E0485A',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#FF69B4',
+    color: '#E0485A',
     marginLeft: 5,
   }
 });
