@@ -26,6 +26,7 @@ export interface Annonce {
   logo?: string;             // URL du logo de l'organisation
   organisation: string;      // Nom de l'organisation
   temps?: string;            // Temps écoulé depuis la publication (calculé côté client)
+  titre?: string;            // Titre de l'annonce
   description: string;       // Description de l'annonce
   date: string;              // Date de l'événement
   important: string;         // Information importante
@@ -39,6 +40,8 @@ export interface Annonce {
     email?: string;
     telephone?: string;
   };
+  email?: string;
+  telephone?: string;
   images?: string[];         // URLs des images supplémentaires (optionnel)
   statut?: 'active' | 'terminée' | 'annulée'; // Statut de l'annonce (optionnel)
 }
@@ -59,6 +62,7 @@ class AnnonceService {
       logo: data.logo,
       organisation: data.organisation,
       temps: this.calculerTempsEcoule(data.dateCreation?.toDate()),
+      titre: data.titre,
       description: data.description,
       date: data.date,
       important: data.important,
@@ -185,6 +189,7 @@ class AnnonceService {
           logo: data.logo,
           organisation: data.organisation,
           temps: this.calculerTempsEcoule(data.dateCreation?.toDate()),
+          titre: data.titre,
           description: data.description,
           date: data.date,
           important: data.important,
@@ -276,9 +281,7 @@ class AnnonceService {
     }
   }
 
-  /**
-   * Obtenir les annonces d'un utilisateur
-   */
+  
   async getAnnoncesByUser(userId: string): Promise<Annonce[]> {
     try {
       const q = query(
@@ -294,6 +297,140 @@ class AnnonceService {
       throw error;
     }
   }
+
+  async getAnnonces():Promise<Annonce[]>{
+    try {
+      const q = query(
+        collection(db, this.collectionName),
+        orderBy('dateCreation', 'desc')
+        );
+        
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => this.convertAnnonceDoc(doc));
+      } catch (error) {
+        console.error(`Erreur lors de la récupération des annonces:`, error);
+        throw error;
+        }
+
+  }
+
+  
+  async getAnnoncesByUserId(userId: string): Promise<Annonce[]> {
+    try {
+      const annoncesRef = collection(db, this.collectionName);
+      const q = query(
+        annoncesRef,
+        where('utilisateurId', '==', userId),
+        orderBy('dateCreation', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => this.convertAnnonceDoc(doc));
+    } catch (error) {
+      console.error('Erreur dans getAnnoncesByUserId:', error);
+      throw error;
+    }
+  }
+  
+  
+  async searchAnnoncesByCategory(category: string): Promise<Annonce[]> {
+    try {
+      const annoncesRef = collection(db, this.collectionName);
+      const q = query(
+        annoncesRef,
+        where('categorie', '==', category),
+        orderBy('dateCreation', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => this.convertAnnonceDoc(doc));
+    } catch (error) {
+      console.error('Erreur dans searchAnnoncesByCategory:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rechercher des annonces par lieu (ville ou code postal)
+   * Cette méthode utilise une recherche insensible à la casse pour trouver les annonces
+   * dont le lieu contient la chaîne de recherche.
+   */
+  async searchAnnoncesByLocation(location: string): Promise<Annonce[]> {
+    try {
+      // Convertir en minuscules pour une recherche insensible à la casse
+      const locationLower = location.toLowerCase();
+      
+      // Firebase ne supporte pas directement les recherches partielles de texte
+      // Nous devons donc récupérer toutes les annonces et filtrer côté client
+      const annoncesRef = collection(db, this.collectionName);
+      const q = query(
+        annoncesRef,
+        orderBy('dateCreation', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      // Filtrer les annonces qui contiennent la chaîne de recherche dans le lieu
+      return querySnapshot.docs
+        .map(doc => this.convertAnnonceDoc(doc))
+        .filter(annonce => 
+          annonce.lieu && 
+          annonce.lieu.toLowerCase().includes(locationLower)
+        );
+    } catch (error) {
+      console.error('Erreur dans searchAnnoncesByLocation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Recherche avancée d'annonces avec filtres multiples
+   * @param filters - Objet contenant les filtres à appliquer
+   * @returns Liste d'annonces filtrées
+   */
+  async searchAnnonces(filters: {
+    location?: string;
+    categorie?: string;
+    dateDebut?: Date;
+    dateFin?: Date;
+  }): Promise<Annonce[]> {
+    try {
+      // Récupérer toutes les annonces et appliquer les filtres côté client
+      const annoncesRef = collection(db, this.collectionName);
+      const q = query(
+        annoncesRef,
+        orderBy('dateCreation', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      let results = querySnapshot.docs.map(doc => this.convertAnnonceDoc(doc));
+      
+      // Appliquer les filtres
+      if (filters.location) {
+        const locationLower = filters.location.toLowerCase();
+        results = results.filter(annonce => 
+          annonce.lieu && 
+          annonce.lieu.toLowerCase().includes(locationLower)
+        );
+      }
+      
+      if (filters.categorie) {
+        results = results.filter(annonce => 
+          annonce.categorie && 
+          (annonce.categorie.toLowerCase() === filters.categorie?.toLowerCase() ||
+           annonce.categorie === filters.categorie)
+        );
+      }
+      
+      // Filtres de date à implémenter ultérieurement
+      
+      return results;
+    } catch (error) {
+      console.error('Erreur dans searchAnnonces:', error);
+      throw error;
+    }
+  }
+
 }
 
 // Exporter une instance unique du service

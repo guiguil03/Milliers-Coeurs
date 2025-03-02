@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import { useAuthContext } from '../contexts/AuthContext';
+import { MISSION_CATEGORIES, Category } from '../constants/categories';
 
 interface AnnonceFormProps {
   annonceId?: string; // Si fourni, mode édition
@@ -40,7 +41,6 @@ const AnnonceForm: React.FC<AnnonceFormProps> = ({ annonceId, onSuccess, onCance
   const isEditMode = !!annonceId;
 
   useEffect(() => {
-    // Si en mode édition, charger l'annonce existante
     if (isEditMode) {
       fetchAnnonce();
     }
@@ -73,7 +73,6 @@ const AnnonceForm: React.FC<AnnonceFormProps> = ({ annonceId, onSuccess, onCance
   };
 
   const handleSubmit = async () => {
-    // Valider les champs obligatoires
     if (!organisation || !description || !date || !important) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires.");
       return;
@@ -205,13 +204,32 @@ const AnnonceForm: React.FC<AnnonceFormProps> = ({ annonceId, onSuccess, onCance
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Catégorie</Text>
-          <TextInput
-            style={styles.input}
-            value={categorie}
-            onChangeText={setCategorie}
-            placeholder="Catégorie de l'annonce"
-            maxLength={50}
-          />
+          <View style={styles.categoriesContainer}>
+            {MISSION_CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryCard,
+                  categorie === category.id && styles.selectedCategory
+                ]}
+                onPress={() => setCategorie(category.id)}
+              >
+                <Ionicons 
+                  name={category.icon as any} 
+                  size={28} 
+                  color={categorie === category.id ? "#fff" : "#E0485A"} 
+                />
+                <Text 
+                  style={[
+                    styles.categoryTitle,
+                    categorie === category.id && styles.selectedCategoryText
+                  ]}
+                >
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.formGroup}>
@@ -353,6 +371,40 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  categoryCard: {
+    width: '30%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  categoryTitle: {
+    marginTop: 8,
+    fontSize: 12,
+    textAlign: 'center',
+    color: '#333',
+  },
+  selectedCategory: {
+    backgroundColor: '#E0485A',
+    borderColor: '#E0485A',
+  },
+  selectedCategoryText: {
+    color: '#fff',
   },
 });
 

@@ -1,113 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import React, { useEffect, useState } from 'react';
+import { FlatList, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import { Ionicons } from '@expo/vector-icons';
 
-const AnnoncesList: React.FC = () => {
+type AnnonceListFilterProps = {
+  categorie?: string;
+  location?: string;
+  search?: {
+    location?: string;
+    categorie?: string;
+  };
+}
+
+type Props = {
+  filter?: AnnonceListFilterProps;
+};
+
+const AnnoncesList: React.FC<Props> = ({ filter }) => {
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    fetchAnnonces();
-  }, []);
+    async function fetchAnnonces() {
+      try {
+        setLoading(true);
+        setError(null);
+        let result: Annonce[] = [];
 
-  const fetchAnnonces = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const data = await annonceService.getAllAnnonces();
-      setAnnonces(data);
-    } catch (error) {
-      console.error('Erreur lors du chargement des annonces:', error);
-      setError('Impossible de charger les annonces. Veuillez réessayer.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchAnnonces();
-    setRefreshing(false);
-  };
-
-  const navigateToDetail = (annonce: Annonce) => {
-    if (annonce.id) {
-      // Naviguer vers la page de détails en utilisant expo-router
-      router.push(`/annonces/${annonce.id}`);
-    }
-  };
-
-  const renderAnnonceItem = ({ item }: { item: Annonce }) => {
-    // Vérifier si l'annonce existe
-    if (!item) return null;
-    
-    return (
-      <TouchableOpacity 
-        style={styles.annonceItem} 
-        onPress={() => navigateToDetail(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.logoContainer}>
-          {item.logo ? (
-            <Image source={{ uri: item.logo }} style={styles.logo} />
-          ) : (
-            <View style={[styles.logo, styles.placeholderLogo]}>
-              <Text style={styles.placeholderText}>
-                {item.organisation?.substring(0, 2).toUpperCase() || 'AN'}
-              </Text>
-            </View>
-          )}
-        </View>
+        // Utiliser la nouvelle méthode de recherche avancée si des filtres sont fournis
+        if (filter?.search) {
+          // Utiliser la recherche avancée avec plusieurs filtres
+          result = await annonceService.searchAnnonces({
+            location: filter.search.location,
+            categorie: filter.search.categorie,
+          });
+        } else if (filter?.location) {
+          // Recherche par localisation uniquement
+          result = await annonceService.searchAnnoncesByLocation(filter.location);
+        } else if (filter?.categorie) {
+          // Recherche par catégorie uniquement
+          result = await annonceService.searchAnnoncesByCategory(filter.categorie);
+        } else {
+          // Pas de filtre, récupérer toutes les annonces
+          result = await annonceService.getAnnonces();
+        }
         
-        <View style={styles.contentContainer}>
-          <View style={styles.headerRow}>
-            <Text style={styles.organisation}>{item.organisation || 'Organisation'}</Text>
-            <Text style={styles.temps}>{"il y a quelques heures"}</Text>
-          </View>
-          
-          <Text style={styles.description} numberOfLines={2}>
-            {item.description || 'Aucune description'} 
-            <Text style={styles.important}> {item.important || ''}</Text>
-          </Text>
-          
-          {item.lieu && (
-            <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={14} color="#666" />
-              <Text style={styles.infoText}>{item.lieu}</Text>
-            </View>
-          )}
-          
-          {item.categorie && (
-            <View style={styles.categoryTag}>
-              <Text style={styles.categoryText}>{item.categorie}</Text>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  };
+        setAnnonces(result);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des annonces:', err);
+        setError('Erreur lors de la récupération des annonces. Veuillez réessayer plus tard.');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  if (loading && !refreshing) {
+    fetchAnnonces();
+  }, [filter]);
+
+  const renderAnnonceItem = ({ item }: { item: Annonce }) => (
+    <TouchableOpacity 
+      style={styles.annonceCard}
+      onPress={() => router.push(`/annonce/details?id=${item.id}`)}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.annonceTitle} numberOfLines={2}>{item.titre}</Text>
+        <Text style={styles.annonceOrganisation} numberOfLines={1}>{item.organisation}</Text>
+      </View>
+      
+      <View style={styles.cardInfo}>
+        {item.lieu && (
+          <View style={styles.infoItem}>
+            <Ionicons name="location-outline" size={16} color="#666" />
+            <Text style={styles.infoText} numberOfLines={1}>{item.lieu}</Text>
+          </View>
+        )}
+        
+        {item.categorie && (
+          <View style={styles.infoItem}>
+            <Ionicons name="pricetag-outline" size={16} color="#666" />
+            <Text style={styles.infoText}>{item.categorie}</Text>
+          </View>
+        )}
+      </View>
+      
+      {item.description && (
+        <Text style={styles.annonceDescription} numberOfLines={3}>
+          {item.description}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+
+  if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color="#E0485A" />
+        <Text style={styles.loadingText}>Chargement des annonces...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={40} color="#E0485A" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
-          <Text style={styles.retryText}>Réessayer</Text>
-        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (annonces.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="search-outline" size={40} color="#666" />
+        <Text style={styles.emptyText}>Aucune annonce trouvée</Text>
+        {(filter?.location || filter?.categorie || filter?.search) && (
+          <Text style={styles.suggestionText}>
+            Essayez de modifier vos critères de recherche
+          </Text>
+        )}
       </View>
     );
   }
@@ -116,27 +130,18 @@ const AnnoncesList: React.FC = () => {
     <FlatList
       data={annonces}
       renderItem={renderAnnonceItem}
-      keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+      keyExtractor={(item) => item.id || Math.random().toString()}
       contentContainerStyle={styles.listContainer}
-      refreshing={refreshing}
-      onRefresh={handleRefresh}
-      ListEmptyComponent={
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>Aucune annonce disponible</Text>
-        </View>
-      }
     />
   );
-};
+}
 
 const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
-    paddingBottom: 100,
   },
-  annonceItem: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+  annonceCard: {
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -146,97 +151,67 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  logoContainer: {
-    marginRight: 12,
+  cardHeader: {
+    marginBottom: 10,
   },
-  logo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  placeholderLogo: {
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#666',
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  organisation: {
-    fontSize: 16,
+  annonceTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
   },
-  temps: {
-    fontSize: 12,
-    color: '#888',
-  },
-  description: {
+  annonceOrganisation: {
     fontSize: 14,
-    color: '#444',
+    color: '#666',
     marginBottom: 8,
-    lineHeight: 20,
   },
-  important: {
-    fontWeight: 'bold',
-    color: '#E0485A',
+  cardInfo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
   },
-  infoRow: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginRight: 16,
+    marginBottom: 6,
   },
   infoText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     marginLeft: 4,
   },
-  categoryTag: {
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 8,
+  annonceDescription: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
   },
-  categoryText: {
-    fontSize: 10,
-    color: '#666',
-  },
-  centerContainer: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
   errorText: {
+    marginTop: 10,
     fontSize: 16,
     color: '#E0485A',
     textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#E0485A',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
   emptyText: {
-    fontSize: 16,
+    marginTop: 10,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  suggestionText: {
+    marginTop: 8,
+    fontSize: 14,
     color: '#888',
     textAlign: 'center',
   },
