@@ -13,7 +13,7 @@ export default function AnnoncesScreen() {
           headerStyle: {
             backgroundColor: '#FFF',
           },
-          headerTintColor: '#FF69B4',
+          headerTintColor: '#E0485A',
           headerTitleStyle: {
             fontWeight: 'bold',
           },

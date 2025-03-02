@@ -18,7 +18,7 @@ export default function AnnonceDetailRoute() {
           headerStyle: {
             backgroundColor: '#FFF',
           },
-          headerTintColor: '#E04',
+          headerTintColor: '#E0485A',
           headerTitleStyle: {
             fontWeight: 'bold',
           },
