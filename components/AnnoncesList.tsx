@@ -30,21 +30,15 @@ const AnnoncesList: React.FC<Props> = ({ filter }) => {
         setError(null);
         let result: Annonce[] = [];
 
-        // Utiliser la nouvelle méthode de recherche avancée si des filtres sont fournis
         if (filter?.search) {
-          // Utiliser la recherche avancée avec plusieurs filtres
           result = await annonceService.searchAnnonces({
             location: filter.search.location,
             categorie: filter.search.categorie,
           });
-        } else if (filter?.location) {
-          // Recherche par localisation uniquement
-          result = await annonceService.searchAnnoncesByLocation(filter.location);
+        } else if (filter?.location) {          result = await annonceService.searchAnnoncesByLocation(filter.location);
         } else if (filter?.categorie) {
-          // Recherche par catégorie uniquement
           result = await annonceService.searchAnnoncesByCategory(filter.categorie);
         } else {
-          // Pas de filtre, récupérer toutes les annonces
           result = await annonceService.getAnnonces();
         }
         

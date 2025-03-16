@@ -44,7 +44,7 @@ export default function ExplorerPage() {
         searchFilters.categorie = selectedCategory;
       }
 
-      // Effectuer la recherche avancée
+      // Effectuer la  
       const results = await annonceService.searchAnnonces(searchFilters);
       
       // Naviguer vers la page des résultats avec les paramètres de recherche

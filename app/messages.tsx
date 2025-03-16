@@ -6,7 +6,7 @@ export default function MessagesPage() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Mes messages</Text>
+        <Text style={styles.title}>Mes Nouveaux messages</Text>
       </View>
       
       {messages.map(message => (

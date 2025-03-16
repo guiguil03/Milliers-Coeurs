@@ -109,7 +109,6 @@ export default function AnnonceDetailsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header avec bouton retour */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButtonIcon}
@@ -120,7 +119,6 @@ export default function AnnonceDetailsScreen() {
         <Text style={styles.headerTitle}>Détails de la mission</Text>
       </View>
 
-      {/* Information de l'organisation */}
       <View style={styles.orgSection}>
         <View style={styles.orgHeader}>
           <View style={styles.logoContainer}>
@@ -139,7 +137,6 @@ export default function AnnonceDetailsScreen() {
         </View>
       </View>
 
-      {/* Informations détaillées */}
       <View style={styles.detailsContainer}>
         <View style={styles.detailSection}>
           <Ionicons name="information-circle" size={22} color="#E0485A" style={styles.detailIcon} />

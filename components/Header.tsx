@@ -13,16 +13,13 @@ export const Header: React.FC<HeaderProps> = () => {
   const { user, logout } = useAuthContext();
   const [displayName, setDisplayName] = useState<string | null>(null);
 
-  // Récupérer le prénom de l'utilisateur (Firebase ou stockage local)
   useEffect(() => {
     const fetchDisplayName = async () => {
       if (user) {
-        // Vérifier d'abord dans Firebase
         if (user.displayName) {
           console.log("[Header] DisplayName trouvé dans Firebase:", user.displayName);
           setDisplayName(user.displayName);
         } else {
-          // Essayer de récupérer depuis le stockage local
           console.log("[Header] Pas de displayName dans Firebase, tentative de récupération locale");
           try {
             const localName = await userDataService.getDisplayName(user.uid);
@@ -106,7 +103,6 @@ export const Header: React.FC<HeaderProps> = () => {
         </TouchableOpacity>
       </View>
       
-      {/* N'afficher l'écran d'authentification que si l'utilisateur n'est pas connecté */}
       {!user && <AuthScreen visible={isAuthVisible} onClose={handleAuthClose} />}
     </SafeAreaView>
   );

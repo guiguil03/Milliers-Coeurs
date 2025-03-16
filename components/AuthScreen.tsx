@@ -58,7 +58,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
         const user = await login(email, password);
         console.log("[AuthScreen] Connexion réussie, UID:", user?.uid);
       } else {
-        // Inscription avec prénom
         const displayName = firstName.trim();
         console.log("[AuthScreen] Tentative d'inscription avec email:", email, "et prénom:", displayName);
         
@@ -68,7 +67,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
           displayName 
         });
         
-        // S'assurer que le prénom est bien enregistré localement
         if (user && user.uid) {
           console.log("[AuthScreen] Enregistrement local du prénom pour l'utilisateur:", user.uid);
           await userDataService.saveDisplayName(user.uid, displayName);
@@ -77,7 +75,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
         console.log("[AuthScreen] Inscription réussie");
       }
       
-      // Si nous arrivons ici, c'est que l'authentification a réussi
       Alert.alert(
         isLogin ? "Connexion réussie" : "Inscription réussie",
         isLogin ? "Vous êtes maintenant connecté." : `Bienvenue ${firstName}! Votre compte a été créé avec succès.`,
