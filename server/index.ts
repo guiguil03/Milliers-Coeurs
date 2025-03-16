@@ -1,10 +1,13 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const { testConnection, db } = require('./database');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import { testConnection, db } from './database';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+import { Request, Response, NextFunction } from 'express';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,8 +20,17 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Tester la connexion à la base de données
 testConnection();
 
+// Extension de la Request d'Express pour inclure l'utilisateur
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
 // Routes d'authentification
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
     const { email, password, firstName, lastName, phoneNumber, address, postalCode, city } = req.body;
     
@@ -68,7 +80,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     
@@ -119,7 +131,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     
@@ -159,7 +171,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', async (req: Request, res: Response) => {
   try {
     const { token, newPassword } = req.body;
     
@@ -198,7 +210,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 // Middleware pour vérifier l'authentification
-const authenticateJWT = (req, res, next) => {
+const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   
   if (authHeader) {
@@ -218,7 +230,7 @@ const authenticateJWT = (req, res, next) => {
 };
 
 // Route protégée pour obtenir le profil utilisateur
-app.get('/api/profile', authenticateJWT, async (req, res) => {
+app.get('/api/profile', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const user = await db.User.findByPk(req.user.id, {
       attributes: { exclude: ['password', 'resetPasswordToken', 'resetPasswordExpires'] }
