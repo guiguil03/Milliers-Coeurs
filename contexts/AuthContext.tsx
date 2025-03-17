@@ -7,6 +7,7 @@ import { UserData } from '../services/authService';
 interface AuthContextType {
   user: User | null;
   profile: IProfile | null;
+  userType: 'association' | 'benevole' | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<User>;

@@ -1,9 +1,10 @@
 // Import Firebase
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getAnalytics } from 'firebase/analytics';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getAnalytics, Analytics } from 'firebase/analytics';
+import { getDatabase, Database } from 'firebase/database';
 import Constants from 'expo-constants';
 
 // Obtenir les variables d'environnement d'Expo
@@ -40,13 +41,19 @@ if (!isValidConfig(firebaseConfig)) {
 console.log("Initialisation de Firebase avec la configuration:", JSON.stringify(firebaseConfig, null, 2));
 
 // Initialize Firebase
-let app, auth, db, storage, analytics;
+let app: FirebaseApp, 
+    auth: Auth, 
+    db: Firestore, 
+    storage: FirebaseStorage, 
+    analytics: Analytics | undefined, 
+    rtdb: Database;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  rtdb = getDatabase(app);
   
   // Initialiser Analytics uniquement sur les plateformes qui le supportent
   try {
@@ -62,4 +69,4 @@ try {
   throw error;
 }
 
-export { app, auth, db, storage, analytics };
+export { app, auth, db, storage, analytics, rtdb };

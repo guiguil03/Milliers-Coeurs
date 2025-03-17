@@ -23,6 +23,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [userType, setUserType] = useState<'association' | 'benevole'>('benevole');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -32,6 +33,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
     setEmail('');
     setPassword('');
     setFirstName('');
+    setUserType('benevole');
     setLoading(false);
     setErrorMessage(null);
   };
@@ -59,17 +61,19 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
         console.log("[AuthScreen] Connexion réussie, UID:", user?.uid);
       } else {
         const displayName = firstName.trim();
-        console.log("[AuthScreen] Tentative d'inscription avec email:", email, "et prénom:", displayName);
+        console.log("[AuthScreen] Tentative d'inscription avec email:", email, "et prénom:", displayName, "type:", userType);
         
         const user = await register({ 
           email, 
           password, 
-          displayName 
+          displayName,
+          userType
         });
         
         if (user && user.uid) {
           console.log("[AuthScreen] Enregistrement local du prénom pour l'utilisateur:", user.uid);
           await userDataService.saveDisplayName(user.uid, displayName);
+          await userDataService.saveUserType(user.uid, userType);
         }
         
         console.log("[AuthScreen] Inscription réussie");
@@ -163,6 +167,47 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
               </View>
             )}
 
+            {!isLogin && (
+              <View style={styles.userTypeContainer}>
+                <Text style={styles.label}>Vous êtes :</Text>
+                <View style={styles.userTypeOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.userTypeButton,
+                      userType === 'benevole' && styles.selectedUserType
+                    ]}
+                    onPress={() => setUserType('benevole')}
+                  >
+                    <Text 
+                      style={[
+                        styles.userTypeText, 
+                        userType === 'benevole' && styles.selectedUserTypeText
+                      ]}
+                    >
+                      Bénévole
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.userTypeButton,
+                      userType === 'association' && styles.selectedUserType
+                    ]}
+                    onPress={() => setUserType('association')}
+                  >
+                    <Text 
+                      style={[
+                        styles.userTypeText, 
+                        userType === 'association' && styles.selectedUserTypeText
+                      ]}
+                    >
+                      Association
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             <TextInput
               style={styles.input}
               placeholder="Mot de passe"
@@ -232,11 +277,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalView: {
-    width: 'auto',
+    width: '100%',
     backgroundColor: 'white',
     borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
+    padding: 25,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -250,78 +294,110 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#E0485A',
+    textAlign: 'center',
+    color: '#333',
   },
   input: {
-    width: '100%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#f5f5f5',
     borderRadius: 8,
-    marginVertical: 8,
-    paddingHorizontal: 15,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  inputContainer: {
+    marginBottom: 12,
+  },
+  label: {
     fontSize: 16,
+    marginBottom: 6,
+    color: '#333',
+    fontWeight: '500',
+  },
+  userTypeContainer: {
+    marginBottom: 15,
+  },
+  userTypeOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  userTypeButton: {
+    borderWidth: 1,
+    borderColor: '#E0485A',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  selectedUserType: {
+    backgroundColor: '#E0485A',
+  },
+  userTypeText: {
+    color: '#E0485A',
+    fontWeight: 'bold',
+  },
+  selectedUserTypeText: {
+    color: 'white',
   },
   button: {
-    width: '100%',
     backgroundColor: '#E0485A',
     borderRadius: 8,
-    height: 50,
+    padding: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 15,
+    marginVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  errorContainer: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  errorText: {
+    color: '#B71C1C',
+    fontSize: 14,
   },
   switchButton: {
-    marginVertical: 10,
+    alignItems: 'center',
+    marginTop: 12,
+    padding: 8,
   },
   switchText: {
     color: '#E0485A',
-    fontSize: 14,
+    fontWeight: '600',
   },
   closeButton: {
-    marginTop: 10,
+    alignItems: 'center',
+    marginTop: 8,
+    padding: 8,
   },
   closeText: {
-    color: '#777',
-    fontSize: 14,
+    color: '#666',
   },
   forgotPasswordContainer: {
-    width: '100%',
     alignItems: 'flex-end',
-    marginTop: 5,
+    marginBottom: 12,
   },
   forgotPasswordText: {
     color: '#E0485A',
     fontSize: 14,
-  },
-  errorContainer: {
-    width: '100%',
-    backgroundColor: '#ffebee',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ffcdd2',
-  },
-  errorText: {
-    color: '#d32f2f',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  inputContainer: {
-    width: '100%',
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 5,
-  },
+  }
 });
 
 export default AuthScreen;

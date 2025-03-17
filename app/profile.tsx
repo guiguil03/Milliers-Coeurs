@@ -1,14 +1,14 @@
 import { StyleSheet, View, Text, Image, ScrollView, Switch, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { profile as initialProfile } from '../data/profil';
+import { profile as initialProfile, Profile } from '../data/profil';
 import { useState } from 'react';
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState(initialProfile);
+  const [profile, setProfile] = useState<Profile>(initialProfile);
   const [isPermifiee, setIsPermifiee] = useState(true);
   const [isVehiculee, setIsVehiculee] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [tempProfile, setTempProfile] = useState(initialProfile);
+  const [tempProfile, setTempProfile] = useState<Profile>(initialProfile);
   const [newCompetence, setNewCompetence] = useState({ nom: '', niveau: '3' });
   const [newExperience, setNewExperience] = useState('');
   const [showAddCompetence, setShowAddCompetence] = useState(false);
@@ -31,24 +31,24 @@ export default function ProfilePage() {
     setTempProfile(profile);
   };
   
-  const handleChange = (field, value) => {
+  const handleChange = (field: keyof Profile, value: string) => {
     setTempProfile(prev => ({
       ...prev,
       [field]: value
     }));
   };
   
-  const handleCompetenceChange = (competence, rating) => {
+  const handleCompetenceChange = (competence: string, rating: string) => {
     setTempProfile(prev => ({
       ...prev,
       competences: {
         ...prev.competences,
-        [competence]: rating.toString()
+        [competence]: rating
       }
     }));
   };
   
-  const handleHistoriqueChange = (key, value) => {
+  const handleHistoriqueChange = (key: string, value: string) => {
     setTempProfile(prev => ({
       ...prev,
       historique: {
@@ -96,7 +96,7 @@ export default function ProfilePage() {
     setShowAddCompetence(false);
   };
   
-  const handleDeleteExperience = (keyToDelete) => {
+  const handleDeleteExperience = (keyToDelete: string) => {
     Alert.alert(
       "Confirmation",
       "Êtes-vous sûr de vouloir supprimer cette expérience ?",
@@ -122,7 +122,7 @@ export default function ProfilePage() {
     );
   };
   
-  const handleDeleteCompetence = (competenceToDelete) => {
+  const handleDeleteCompetence = (competenceToDelete: string) => {
     Alert.alert(
       "Confirmation",
       "Êtes-vous sûr de vouloir supprimer cette compétence ?",
@@ -407,7 +407,7 @@ export default function ProfilePage() {
                     {[1, 2, 3, 4, 5].map(starIndex => (
                       <TouchableOpacity 
                         key={starIndex} 
-                        onPress={() => handleCompetenceChange(key, starIndex)}
+                        onPress={() => handleCompetenceChange(key, starIndex.toString())}
                       >
                         <Ionicons 
                           name={starIndex <= rating ? "star" : "star-outline"} 

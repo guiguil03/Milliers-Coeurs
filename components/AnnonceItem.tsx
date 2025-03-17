@@ -1,18 +1,26 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Annonce } from '../services/annonceFirebaseService';
+import { useAuthContext } from '../contexts/AuthContext';
+import { annonceService } from '../services/annonceFirebaseService';
+import { useRouter } from 'expo-router';
 
 // Propriétés nécessaires pour le composant
 interface AnnonceItemProps {
   annonce: Annonce;
   onPress?: () => void;
+  onDelete?: () => void;
 }
 
 const AnnonceItem: React.FC<AnnonceItemProps> = ({ 
   annonce,
-  onPress 
+  onPress,
+  onDelete
 }) => {
+  const { user } = useAuthContext();
+  const router = useRouter();
+  
   // S'assurer que l'annonce existe et extraire ses propriétés avec des valeurs par défaut
   if (!annonce) {
     return null; // Ne rien afficher si l'annonce est undefined
@@ -22,11 +30,46 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
     logo, 
     organisation = 'Organisation', 
     description = 'Aucune description', 
-    important = 'Information importante'
+    important = 'Information importante',
+    utilisateurId
   } = annonce;
+  
+  // Vérifier si l'utilisateur connecté est le propriétaire de l'annonce
+  const isOwner = user && utilisateurId && user.uid === utilisateurId;
   
   // Simulation d'un temps (à remplacer par un calcul réel du temps écoulé)
   const temps = "il y a quelques heures"; 
+
+  // Fonction pour supprimer l'annonce
+  const handleDelete = () => {
+    if (!isOwner) return;
+    
+    Alert.alert(
+      "Supprimer l'annonce",
+      "Êtes-vous sûr de vouloir supprimer cette annonce ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              if (annonce.id) {
+                await annonceService.deleteAnnonce(annonce.id);
+                if (onDelete) {
+                  onDelete();
+                }
+                Alert.alert("Succès", "L'annonce a été supprimée avec succès.");
+              }
+            } catch (error) {
+              console.error("Erreur lors de la suppression de l'annonce:", error);
+              Alert.alert("Erreur", "Impossible de supprimer l'annonce. Veuillez réessayer.");
+            }
+          } 
+        }
+      ]
+    );
+  };
 
   return (
     <TouchableOpacity 
@@ -48,6 +91,12 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
             <Text style={styles.timeAgo}>{temps}</Text>
           </View>
         </View>
+        
+        {isOwner && (
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={20} color="#E0485A" />
+          </TouchableOpacity>
+        )}
       </View>
       
       <View style={styles.content}>
@@ -59,71 +108,88 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       <View style={styles.actions}>
         <TouchableOpacity style={[styles.actionButton, styles.repondreButton]}>
           <Text style={styles.actionText}>RÉPONDRE</Text>
-          <Ionicons name="chatbubble-outline" size={18} color="#333" />
+          <Ionicons name="chatbubble-outline" size={18} color="#fff" />
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.actionButton, styles.reserverButton]}>
           <Text style={styles.actionText}>RÉSERVER</Text>
-          <Ionicons name="calendar-outline" size={18} color="#333" />
+          <Ionicons name="calendar-outline" size={18} color="#fff" />
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.actionButton, styles.partagerButton]}>
           <Text style={styles.actionText}>PARTAGER</Text>
-          <Ionicons name="arrow-redo-outline" size={18} color="#333" />
+          <Ionicons name="arrow-redo-outline" size={18} color="#fff" />
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.actionButton, styles.favorisButton]}>
           <Text style={styles.actionText}>FAVORIS</Text>
-          <Ionicons name="heart-outline" size={18} color="#333" />
+          <Ionicons name="heart-outline" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 };
 
+const screenWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
   annonceContainer: {
     backgroundColor: '#fff',
-    marginVertical: 8,
-    marginHorizontal: 10,
+    width: screenWidth,
+    marginVertical: 10,
+    marginHorizontal: 0,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    borderRadius: 5,
+    borderRadius: 0,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   header: {
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   orgInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
   },
   orgText: {
     marginLeft: 10,
   },
   orgName: {
     fontWeight: 'bold',
+    fontSize: 16,
   },
   timeAgo: {
     color: '#666',
     fontSize: 12,
   },
   content: {
-    padding: 15,
+    padding: 20,
   },
   description: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 24,
   },
   important: {
     fontWeight: 'bold',
+    color: '#E0485A',
   },
   actions: {
     flexDirection: 'row',
@@ -135,9 +201,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 10,
-    margin: 2,
-    borderRadius: 4,
+    padding: 12,
+    margin: 1,
   },
   repondreButton: {
     backgroundColor: '#4CAF50',
@@ -156,6 +221,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  deleteButton: {
+    padding: 5,
   }
 });
 

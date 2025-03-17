@@ -4,7 +4,7 @@ import { useColorScheme } from 'react-native';
 import { DefaultTheme } from '@react-navigation/native';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Header } from '../components/Header';
+import Header from '../components/Header';
 import { Footer } from '../components/Footer';
 import { AuthProvider } from '../contexts/AuthContext';
 

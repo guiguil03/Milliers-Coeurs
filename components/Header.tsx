@@ -1,146 +1,140 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, Image, TouchableOpacity, Alert } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
-import AuthScreen from './AuthScreen';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Modal,
+  Image,
+  Platform
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthContext } from '../contexts/AuthContext';
-import { userDataService } from '../services/userDataService';
+import AuthScreen from './AuthScreen';
 
-interface HeaderProps {}
-
-export const Header: React.FC<HeaderProps> = () => {
-  const [isAuthVisible, setIsAuthVisible] = useState(false);
-  const { user, logout } = useAuthContext();
-  const [displayName, setDisplayName] = useState<string | null>(null);
+const Header = () => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
+  const { user, userType, logout } = useAuthContext();
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchDisplayName = async () => {
-      if (user) {
-        if (user.displayName) {
-          console.log("[Header] DisplayName trouvé dans Firebase:", user.displayName);
-          setDisplayName(user.displayName);
-        } else {
-          console.log("[Header] Pas de displayName dans Firebase, tentative de récupération locale");
-          try {
-            const localName = await userDataService.getDisplayName(user.uid);
-            if (localName) {
-              console.log("[Header] DisplayName trouvé localement:", localName);
-              setDisplayName(localName);
-            } else {
-              console.log("[Header] Aucun displayName trouvé");
-              setDisplayName(null);
-            }
-          } catch (error) {
-            console.error("[Header] Erreur lors de la récupération du displayName local:", error);
-            setDisplayName(null);
-          }
-        }
-      } else {
-        setDisplayName(null);
-      }
-    };
-
-    fetchDisplayName();
-  }, [user]);
-
-  // Fermer automatiquement l'écran d'authentification si l'utilisateur se connecte
-  useEffect(() => {
     if (user) {
-      setIsAuthVisible(false);
-    }
-  }, [user]);
-
-  const handleAuthPress = () => {
-    if (user) {
-      // Si l'utilisateur est connecté, afficher un menu de déconnexion
-      Alert.alert(
-        'Déconnexion',
-        `Êtes-vous sûr de vouloir vous déconnecter, ${displayName || 'utilisateur'} ?`,
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { 
-            text: 'Déconnexion', 
-            style: 'destructive', 
-            onPress: async () => {
-              try {
-                await logout();
-              } catch (error) {
-                console.error('[Header] Erreur lors de la déconnexion:', error);
-              }
-            } 
-          }
-        ]
-      );
+      // Récupérer et formater le nom d'affichage de l'utilisateur
+      const displayName = user.displayName || user.email?.split('@')[0] || '';
+      setUserDisplayName(displayName);
     } else {
-      // Si l'utilisateur n'est pas connecté, afficher l'écran d'authentification
-      setIsAuthVisible(true);
+      setUserDisplayName(null);
     }
+  }, [user]);
+
+  const handleLogin = () => {
+    setModalVisible(true);
   };
 
-  const handleAuthClose = () => {
-    setIsAuthVisible(false);
+  const handleHomePress = () => {
+    router.push('/');
   };
 
-  // Vérifier si on doit afficher le prénom ou l'icône
-  const shouldShowDisplayName = user && displayName && displayName.trim() !== '';
-  
   return (
-    <SafeAreaView>
-      <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Image source={require('../assets/images/logo.png')} style={{ width: 40, height: 40 }} />
-        <Text style={styles.Titre}> Milliers de Coeurs</Text>
-        
-        <TouchableOpacity onPress={handleAuthPress} style={styles.authButton}>
-          {shouldShowDisplayName ? (
-            <View style={styles.userContainer}>
-              <Ionicons name="person-circle" size={22} color="#E0485A" />
-              <Text style={styles.userName}>{displayName}</Text>
-            </View>
-          ) : (
-            <Ionicons name="person" size={24} color="black" />
-          )}
+    <View style={styles.container}>
+      <View style={styles.headerContent}>
+        <TouchableOpacity 
+          style={styles.logoContainer}
+          onPress={handleHomePress}
+        >
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Milliers de Coeurs</Text>
         </TouchableOpacity>
+        
+        {user ? (
+          <View style={styles.userInfoContainer}>
+            <Text style={styles.greeting}>
+              Bonjour, <Text style={styles.userName}>{userDisplayName}</Text>
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Connexion</Text>
+          </TouchableOpacity>
+        )}
       </View>
       
-      {!user && <AuthScreen visible={isAuthVisible} onClose={handleAuthClose} />}
-    </SafeAreaView>
+      <AuthScreen
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
-    height: 60,
-    display:'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+  container: {
     backgroundColor: '#E0485A',
+    paddingTop: Platform.OS === 'ios' ? 50 : 10,
+    paddingBottom: 10,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e1e1e1',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 1000,
   },
-  Titre: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 10,
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  authButton: {
-    padding: 5,
-  },
-  userContainer: {
+  logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F8F8',
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  userInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: 15,
+  },
+  greeting: {
+    fontSize: 14,
+    color: '#fff',
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  loginButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  loginButtonText: {
     color: '#E0485A',
-    marginLeft: 5,
-  }
+    fontWeight: 'bold',
+  },
 });
+
+export default Header;

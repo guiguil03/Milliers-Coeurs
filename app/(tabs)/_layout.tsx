@@ -4,6 +4,7 @@ import { Footer } from '../../components/Footer';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
@@ -13,30 +14,43 @@ export default function TabLayout() {
         <Tabs
           screenOptions={{
             headerShown: false,
+            tabBarActiveTintColor: '#E0485A',
           }}
         >
           <Tabs.Screen
             name="index"
             options={{
-              title: 'Home',
-            }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{
-              title: 'Profile',
-            }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{
-              title: 'Settings',
+              title: 'Accueil',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="home-outline" size={size} color={color} />
+              ),
             }}
           />
           <Tabs.Screen
             name="explore"
             options={{
-              title: 'Explore',
+              title: 'Explorer',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="search-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="messages"
+            options={{
+              title: 'Messages',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="chatbubble-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="profile"
+            options={{
+              title: 'Profil',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="person-outline" size={size} color={color} />
+              ),
             }}
           />
         </Tabs>

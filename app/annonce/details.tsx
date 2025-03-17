@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { annonceService, Annonce } from '../../services/annonceFirebaseService';
 import { getCategoryById, getCategoryByName } from '../../constants/categories';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 export default function AnnonceDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -11,6 +12,7 @@ export default function AnnonceDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user } = useAuthContext();
 
   useEffect(() => {
     if (!id) {
@@ -65,6 +67,43 @@ export default function AnnonceDetailsScreen() {
     );
   };
 
+  // Fonction pour supprimer l'annonce
+  const handleDelete = () => {
+    if (!user || !annonce || !annonce.utilisateurId || user.uid !== annonce.utilisateurId) {
+      return;
+    }
+    
+    Alert.alert(
+      "Supprimer l'annonce",
+      "Êtes-vous sûr de vouloir supprimer cette annonce ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              if (annonce.id) {
+                await annonceService.deleteAnnonce(annonce.id);
+                Alert.alert(
+                  "Succès", 
+                  "L'annonce a été supprimée avec succès.",
+                  [{ text: "OK", onPress: () => router.back() }]
+                );
+              }
+            } catch (error) {
+              console.error("Erreur lors de la suppression de l'annonce:", error);
+              Alert.alert("Erreur", "Impossible de supprimer l'annonce. Veuillez réessayer.");
+            }
+          } 
+        }
+      ]
+    );
+  };
+
+  // Vérifier si l'utilisateur connecté est le propriétaire de l'annonce
+  const isOwner = user && annonce && annonce.utilisateurId && user.uid === annonce.utilisateurId;
+
   if (loading) {
     return (
       <View style={styles.centeredContainer}>
@@ -117,6 +156,15 @@ export default function AnnonceDetailsScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Détails de la mission</Text>
+        
+        {isOwner && (
+          <TouchableOpacity 
+            style={styles.deleteButtonIcon}
+            onPress={handleDelete}
+          >
+            <Ionicons name="trash-outline" size={24} color="#E0485A" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.orgSection}>
@@ -271,7 +319,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
@@ -282,12 +330,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 15,
-    color: '#333',
+    flex: 1,
+    textAlign: 'center',
+  },
+  deleteButtonIcon: {
+    padding: 5,
   },
   orgSection: {
     backgroundColor: '#fff',
-    padding: 15,
+    padding: 16,
     marginBottom: 10,
   },
   orgHeader: {
@@ -295,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    marginRight: 15,
+    marginRight: 16,
   },
   logo: {
     width: 60,
@@ -313,119 +364,112 @@ const styles = StyleSheet.create({
   orgName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   timeAgo: {
+    color: '#666',
     fontSize: 14,
-    color: '#777',
   },
   detailsContainer: {
     backgroundColor: '#fff',
-    padding: 15,
+    padding: 16,
     marginBottom: 10,
   },
   detailSection: {
     flexDirection: 'row',
-    marginBottom: 15,
+    marginBottom: 16,
   },
   detailIcon: {
-    marginRight: 10,
+    marginRight: 12,
     marginTop: 2,
   },
   detailContent: {
     flex: 1,
   },
   detailLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: '#666',
+    marginBottom: 4,
   },
   detailText: {
-    fontSize: 15,
-    color: '#555',
+    fontSize: 16,
+    color: '#333',
     lineHeight: 22,
   },
   imagesContainer: {
     backgroundColor: '#fff',
-    padding: 15,
+    padding: 16,
     marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   imagesScroll: {
-    flexGrow: 0,
+    flexDirection: 'row',
   },
   additionalImage: {
-    width: 150,
-    height: 100,
-    borderRadius: 5,
+    width: 120,
+    height: 120,
+    borderRadius: 8,
     marginRight: 10,
   },
   actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 15,
+    padding: 16,
     backgroundColor: '#fff',
     marginBottom: 20,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 5,
     flex: 1,
-    marginHorizontal: 5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 6,
+    marginHorizontal: 4,
   },
   reserverButton: {
-    backgroundColor: '#E0485A',
+    backgroundColor: '#4CAF50',
   },
   contactButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#03A9F4',
   },
   favorisButton: {
-    backgroundColor: '#F5A623',
+    backgroundColor: '#E0485A',
   },
   actionButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    marginLeft: 5,
-    fontSize: 14,
+    marginLeft: 6,
   },
   errorText: {
     fontSize: 16,
     color: '#E0485A',
-    textAlign: 'center',
     marginBottom: 20,
+    textAlign: 'center',
   },
   retryButton: {
     backgroundColor: '#E0485A',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 6,
     marginBottom: 10,
   },
   retryText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
   },
   backButton: {
     backgroundColor: '#333',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 6,
   },
   backButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
   },
 });

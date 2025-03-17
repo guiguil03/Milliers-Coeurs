@@ -9,10 +9,12 @@ import {
   UserData
 } from '../services/authService';
 import { getUserProfile, IProfile } from '../services/profileService';
+import { userDataService } from '../services/userDataService';
 
 interface AuthState {
   user: User | null;
   profile: IProfile | null;
+  userType: 'association' | 'benevole' | null;
   loading: boolean;
   error: string | null;
 }
@@ -21,6 +23,7 @@ export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     profile: null,
+    userType: null,
     loading: true,
     error: null
   });
@@ -34,9 +37,13 @@ export function useAuth() {
           // Charger le profil de l'utilisateur
           const userProfile = await getUserProfile(user.uid);
           
+          // Récupérer le type d'utilisateur (association ou bénévole)
+          const userType = await userDataService.getUserType(user.uid);
+          
           setAuthState({
             user,
             profile: userProfile,
+            userType,
             loading: false,
             error: null
           });
@@ -45,6 +52,7 @@ export function useAuth() {
           setAuthState({
             user,
             profile: null,
+            userType: null,
             loading: false,
             error: "Erreur lors du chargement du profil"
           });
@@ -53,6 +61,7 @@ export function useAuth() {
         setAuthState({
           user: null,
           profile: null,
+          userType: null,
           loading: false,
           error: null
         });
@@ -132,6 +141,7 @@ export function useAuth() {
   return {
     user: authState.user,
     profile: authState.profile,
+    userType: authState.userType,
     loading: authState.loading,
     error: authState.error,
     login,

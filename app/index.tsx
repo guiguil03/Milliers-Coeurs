@@ -4,12 +4,14 @@ import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import AnnonceItem from '../components/AnnonceItem';
+import { useAuthContext } from '../contexts/AuthContext';
 
 export default function HomePage() {
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user, userType } = useAuthContext();
 
   useEffect(() => {
     loadRecentAnnonces();
@@ -75,13 +77,20 @@ export default function HomePage() {
           </TouchableOpacity>
         </View>
       ) : (
-        annonces.map(annonce => (
-          <AnnonceItem 
-            key={annonce.id}
-            annonce={annonce}
-            onPress={() => router.push(`/annonce/details?id=${annonce.id}`)}
-          />
-        ))
+        <View style={styles.annoncesSection}>
+          <Text style={styles.sectionTitle}>
+            {userType === 'association' 
+              ? 'Vos annonces récentes' 
+              : 'Annonces récentes'}
+          </Text>
+          {annonces.map(annonce => (
+            <AnnonceItem 
+              key={annonce.id}
+              annonce={annonce}
+              onPress={() => router.push(`/annonce/details?id=${annonce.id}`)}
+            />
+          ))}
+        </View>
       )}
     </ScrollView>
   );
@@ -176,5 +185,36 @@ const styles = StyleSheet.create({
   createEmptyText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  welcomeContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  welcomeTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 22,
+  },
+  annoncesSection: {
+    backgroundColor: '#fff',
+    marginVertical: 15,
+    paddingTop: 16,
+    paddingHorizontal: 0,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    paddingHorizontal: 16,
   },
 });

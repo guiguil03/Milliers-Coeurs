@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { FlatList, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import { Ionicons } from '@expo/vector-icons';
+import AnnonceItem from './AnnonceItem';
 
 type AnnonceListFilterProps = {
   categorie?: string;
@@ -23,69 +24,58 @@ const AnnoncesList: React.FC<Props> = ({ filter }) => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    async function fetchAnnonces() {
-      try {
-        setLoading(true);
-        setError(null);
-        let result: Annonce[] = [];
+  const fetchAnnonces = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      let result: Annonce[] = [];
 
-        if (filter?.search) {
-          result = await annonceService.searchAnnonces({
-            location: filter.search.location,
-            categorie: filter.search.categorie,
-          });
-        } else if (filter?.location) {          result = await annonceService.searchAnnoncesByLocation(filter.location);
-        } else if (filter?.categorie) {
-          result = await annonceService.searchAnnoncesByCategory(filter.categorie);
-        } else {
-          result = await annonceService.getAnnonces();
-        }
-        
-        setAnnonces(result);
-      } catch (err) {
-        console.error('Erreur lors de la récupération des annonces:', err);
-        setError('Erreur lors de la récupération des annonces. Veuillez réessayer plus tard.');
-      } finally {
-        setLoading(false);
+      if (filter?.search) {
+        result = await annonceService.searchAnnonces({
+          location: filter.search.location,
+          categorie: filter.search.categorie,
+        });
+      } else if (filter?.location) {          result = await annonceService.searchAnnoncesByLocation(filter.location);
+      } else if (filter?.categorie) {
+        result = await annonceService.searchAnnoncesByCategory(filter.categorie);
+      } else {
+        result = await annonceService.getAnnonces();
       }
+      
+      setAnnonces(result);
+    } catch (err) {
+      console.error('Erreur lors de la récupération des annonces:', err);
+      setError('Erreur lors de la récupération des annonces. Veuillez réessayer plus tard.');
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchAnnonces();
   }, [filter]);
 
+  const handleAnnoncePress = (annonceId: string | undefined) => {
+    if (annonceId) {
+      router.push(`/annonce/details?id=${annonceId}`);
+    }
+  };
+
+  const handleAnnonceDelete = (deletedAnnonceId: string | undefined) => {
+    if (deletedAnnonceId) {
+      // Mettre à jour la liste locale sans avoir à refaire un appel au serveur
+      setAnnonces(prevAnnonces => 
+        prevAnnonces.filter(annonce => annonce.id !== deletedAnnonceId)
+      );
+    }
+  };
+
   const renderAnnonceItem = ({ item }: { item: Annonce }) => (
-    <TouchableOpacity 
-      style={styles.annonceCard}
-      onPress={() => router.push(`/annonce/details?id=${item.id}`)}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.annonceTitle} numberOfLines={2}>{item.titre}</Text>
-        <Text style={styles.annonceOrganisation} numberOfLines={1}>{item.organisation}</Text>
-      </View>
-      
-      <View style={styles.cardInfo}>
-        {item.lieu && (
-          <View style={styles.infoItem}>
-            <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.infoText} numberOfLines={1}>{item.lieu}</Text>
-          </View>
-        )}
-        
-        {item.categorie && (
-          <View style={styles.infoItem}>
-            <Ionicons name="pricetag-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>{item.categorie}</Text>
-          </View>
-        )}
-      </View>
-      
-      {item.description && (
-        <Text style={styles.annonceDescription} numberOfLines={3}>
-          {item.description}
-        </Text>
-      )}
-    </TouchableOpacity>
+    <AnnonceItem 
+      annonce={item} 
+      onPress={() => handleAnnoncePress(item.id)}
+      onDelete={() => handleAnnonceDelete(item.id)}
+    />
   );
 
   if (loading) {
@@ -130,55 +120,13 @@ const AnnoncesList: React.FC<Props> = ({ filter }) => {
   );
 }
 
+const screenWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
   listContainer: {
-    padding: 16,
-  },
-  annonceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    marginBottom: 10,
-  },
-  annonceTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  annonceOrganisation: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  cardInfo: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 10,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 6,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  annonceDescription: {
-    fontSize: 14,
-    color: '#444',
-    lineHeight: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+    width: screenWidth,
   },
   centered: {
     flex: 1,
@@ -201,14 +149,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#555',
-  },
-  suggestionText: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#888',
+    color: '#333',
     textAlign: 'center',
   },
+  suggestionText: {
+    marginTop: 5,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  }
 });
 
 export default AnnoncesList;

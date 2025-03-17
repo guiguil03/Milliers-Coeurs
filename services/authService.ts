@@ -16,6 +16,7 @@ export interface UserData {
   password: string;
   displayName?: string;
   photoURL?: string;
+  userType?: 'association' | 'benevole'; 
 }
 
 // Mapper les codes d'erreur Firebase en messages plus lisibles
@@ -51,7 +52,8 @@ export const getErrorMessage = (errorCode: string): string => {
 export const registerUser = async (userData: UserData): Promise<User> => {
   console.log("[authService] Tentative d'inscription avec :", {
     email: userData.email,
-    displayName: userData.displayName || "Non fourni"
+    displayName: userData.displayName || "Non fourni",
+    userType: userData.userType || "Non spécifié"
   });
   
   if (!userData.email || !userData.password) {
@@ -90,7 +92,13 @@ export const registerUser = async (userData: UserData): Promise<User> => {
       }
     }
     
-    // 3. Récupérer l'utilisateur mis à jour
+    // 3. Enregistrer le type d'utilisateur s'il est spécifié
+    if (userData.userType) {
+      console.log("[authService] Enregistrement du type d'utilisateur:", userData.userType);
+      await userDataService.saveUserType(userCredential.user.uid, userData.userType);
+    }
+    
+    // 4. Récupérer l'utilisateur mis à jour
     if (auth.currentUser) {
       await auth.currentUser.reload();
       console.log("[authService] Utilisateur mis à jour:", auth.currentUser.displayName);
