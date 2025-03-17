@@ -2,19 +2,19 @@
   "name": "my-mobile-app",
   "main": "expo-router/entry",
   "version": "1.0.0",
-"scripts": {
-  "start": "expo start",
-  "reset-project": "node ./scripts/reset-project.js",
-  "android": "expo start --android",
-  "ios": "expo start --ios",
-  "web": "expo start --web",
-  "build:web": "expo build:web",
-  "test": "jest --watchAll",
-  "lint": "expo lint",
-  "server": "node server/index.js",
-  "db:migrate": "sequelize-cli db:migrate",
-  "db:seed": "sequelize-cli db:seed:all"
-},
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build:web": "expo build:web",
+    "test": "jest --watchAll",
+    "lint": "expo lint",
+    "server": "node server/index.js",
+    "db:migrate": "sequelize-cli db:migrate",
+    "db:seed": "sequelize-cli db:seed:all"
+  },
   "jest": {
     "preset": "jest-expo"
   },
