@@ -1,102 +1,298 @@
-import { StyleSheet, View, Text, Image, ScrollView, Switch, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, Button, Image, TouchableOpacity, Alert, ActivityIndicator, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { profile as initialProfile, Profile } from '../data/profil';
-import { useState } from 'react';
+import { useAuthContext } from '../contexts/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import { ICompetence, IExperience, IProfile } from '../data/profil';
+import { profileService } from '../services/profileService';
+import { storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Stack } from 'expo-router';
+import Header from '../components/Header';
+import firebase from 'firebase/app';
+import 'firebase/firestore';
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile>(initialProfile);
-  const [isPermifiee, setIsPermifiee] = useState(true);
-  const [isVehiculee, setIsVehiculee] = useState(true);
+  const { user, userType } = useAuthContext();
+  const [profile, setProfile] = useState<IProfile | null>(null);
+  const [tempProfile, setTempProfile] = useState<IProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [tempProfile, setTempProfile] = useState<Profile>(initialProfile);
-  const [newCompetence, setNewCompetence] = useState({ nom: '', niveau: '3' });
-  const [newExperience, setNewExperience] = useState('');
-  const [showAddCompetence, setShowAddCompetence] = useState(false);
   const [showAddExperience, setShowAddExperience] = useState(false);
-  
+  const [showAddCompetence, setShowAddCompetence] = useState(false);
+  const [newExperience, setNewExperience] = useState<IExperience>({ 
+    title: '', 
+    organization: '', 
+    date: new Date().toISOString().split('T')[0],
+    description: ''
+  });
+  const [newCompetence, setNewCompetence] = useState<ICompetence>({ name: '', level: 3 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    if (!user) {
+      setLoading(false);
+      setError("Vous devez être connecté pour accéder à votre profil");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const userProfile = await profileService.getProfile(user.uid);
+      
+      if (userProfile) {
+        setProfile(userProfile);
+        setTempProfile(userProfile);
+      } else {
+        // Créer un profil par défaut si aucun n'existe
+        const defaultProfile: IProfile = {
+          uid: user.uid,
+          prenom: user.displayName?.split(' ')[0] || '',
+          nom: user.displayName?.split(' ').slice(1).join(' ') || '',
+          email: user.email || '',
+          image: 'https://i.pravatar.cc/300',
+          userType: userType || 'benevole',
+          competences: [],
+          experiences: []
+        };
+        await profileService.setProfile(defaultProfile);
+        setProfile(defaultProfile);
+        setTempProfile(defaultProfile);
+      }
+    } catch (err: any) {
+      console.error("Erreur lors du chargement du profil:", err);
+      setError(err.message || "Impossible de charger le profil");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImage(result.assets[0].uri);
+        uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la sélection de l'image:", error);
+      Alert.alert("Erreur", "Impossible de sélectionner l'image");
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    if (!user) return;
+    
+    try {
+      setUploading(true);
+      
+      // Convertir l'URI en blob
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      // Créer une référence de stockage avec un nom de fichier unique
+      const imageRef = ref(storage, `profileImages/${user.uid}_${new Date().getTime()}`);
+      
+      // Uploader le blob
+      await uploadBytes(imageRef, blob);
+      
+      // Obtenir l'URL de l'image uploadée
+      const downloadURL = await getDownloadURL(imageRef);
+      
+      // Mettre à jour le profil avec la nouvelle image
+      if (tempProfile) {
+        setTempProfile({
+          ...tempProfile,
+          image: downloadURL
+        });
+      }
+      
+      // Si nous ne sommes pas en mode édition, sauvegarder immédiatement
+      if (!isEditing && profile) {
+        await profileService.updateProfile(user.uid, {
+          ...profile,
+          image: downloadURL
+        });
+        
+        setProfile(prev => prev ? {
+          ...prev,
+          image: downloadURL
+        } : null);
+      }
+      
+      Alert.alert("Succès", "Image de profil mise à jour avec succès!");
+    } catch (error) {
+      console.error("Erreur lors de l'upload de l'image:", error);
+      Alert.alert("Erreur", "Impossible d'uploader l'image");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleEdit = () => {
-    setTempProfile({...profile});
-    setIsEditing(true);
+    if (profile) {
+      setTempProfile({...profile});
+      setIsEditing(true);
+    }
   };
-  
-  const handleSave = () => {
-    setProfile(tempProfile);
-    setIsEditing(false);
-    Alert.alert("Succès", "Vos modifications ont été enregistrées.");
-    // Ici vous pourriez ajouter une fonction pour sauvegarder les données sur un serveur
+
+  const handleSave = async () => {
+    if (!user || !tempProfile) return;
+    
+    try {
+      setLoading(true);
+      await profileService.updateProfile(user.uid, tempProfile);
+      setProfile(tempProfile);
+      setIsEditing(false);
+      Alert.alert("Succès", "Vos modifications ont été enregistrées.");
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible de sauvegarder les modifications");
+    } finally {
+      setLoading(false);
+    }
   };
-  
+
   const handleCancel = () => {
     setIsEditing(false);
-    setTempProfile(profile);
+    if (profile) {
+      setTempProfile({...profile});
+    }
   };
-  
-  const handleChange = (field: keyof Profile, value: string) => {
-    setTempProfile(prev => ({
-      ...prev,
-      [field]: value
-    }));
+
+  const handleChange = (field: keyof IProfile, value: any) => {
+    if (!tempProfile) return;
+    
+    setTempProfile(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [field]: value
+      };
+    });
   };
-  
-  const handleCompetenceChange = (competence: string, rating: string) => {
-    setTempProfile(prev => ({
-      ...prev,
-      competences: {
-        ...prev.competences,
-        [competence]: rating
-      }
-    }));
+
+  const handleCompetenceChange = (index: number, field: keyof ICompetence, value: any) => {
+    if (!tempProfile?.competences) return;
+    
+    setTempProfile(prev => {
+      if (!prev || !prev.competences) return prev;
+      const newCompetences = [...prev.competences];
+      newCompetences[index] = {
+        ...newCompetences[index],
+        [field]: field === 'level' ? Number(value) : value
+      };
+      return {
+        ...prev,
+        competences: newCompetences
+      };
+    });
   };
-  
-  const handleHistoriqueChange = (key: string, value: string) => {
-    setTempProfile(prev => ({
-      ...prev,
-      historique: {
-        ...prev.historique,
-        [key]: value
-      }
-    }));
+
+  const handleExperienceChange = (index: number, field: keyof IExperience, value: string) => {
+    if (!tempProfile?.experiences) return;
+    
+    setTempProfile(prev => {
+      if (!prev || !prev.experiences) return prev;
+      const newExperiences = [...prev.experiences];
+      newExperiences[index] = {
+        ...newExperiences[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        experiences: newExperiences
+      };
+    });
   };
-  
-  const handleAddExperience = () => {
-    if (newExperience.trim() === '') {
-      Alert.alert("Erreur", "Veuillez entrer une expérience valide.");
+
+  const handleAddExperience = async () => {
+    if (!user || !tempProfile) return;
+    
+    if (newExperience.title.trim() === '' || newExperience.organization.trim() === '') {
+      Alert.alert("Erreur", "Veuillez entrer un titre et une organisation valides.");
       return;
     }
     
-    const newKey = `Bénévolat${Object.keys(tempProfile.historique).length + 1}`;
-    
-    setTempProfile(prev => ({
-      ...prev,
-      historique: {
-        ...prev.historique,
-        [newKey]: newExperience
+    try {
+      await profileService.addExperience(user.uid, newExperience);
+      
+      // Mettre à jour l'état local
+      setTempProfile(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          experiences: [...(prev.experiences || []), newExperience]
+        };
+      });
+      
+      // Réinitialiser le formulaire
+      setNewExperience({ 
+        title: '', 
+        organization: '', 
+        date: new Date().toISOString().split('T')[0],
+        description: ''
+      });
+      setShowAddExperience(false);
+      
+      if (!isEditing) {
+        // Rafraîchir le profil si nous ne sommes pas en mode édition
+        fetchUserProfile();
       }
-    }));
-    
-    setNewExperience('');
-    setShowAddExperience(false);
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible d'ajouter l'expérience");
+    }
   };
-  
-  const handleAddCompetence = () => {
-    if (newCompetence.nom.trim() === '') {
+
+  const handleAddCompetence = async () => {
+    if (!user || !tempProfile) return;
+    
+    if (newCompetence.name.trim() === '') {
       Alert.alert("Erreur", "Veuillez entrer un nom de compétence valide.");
       return;
     }
     
-    setTempProfile(prev => ({
-      ...prev,
-      competences: {
-        ...prev.competences,
-        [newCompetence.nom]: newCompetence.niveau
+    try {
+      await profileService.addCompetence(user.uid, newCompetence);
+      
+      // Mettre à jour l'état local
+      setTempProfile(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          competences: [...(prev.competences || []), newCompetence]
+        };
+      });
+      
+      // Réinitialiser le formulaire
+      setNewCompetence({ name: '', level: 3 });
+      setShowAddCompetence(false);
+      
+      if (!isEditing) {
+        // Rafraîchir le profil si nous ne sommes pas en mode édition
+        fetchUserProfile();
       }
-    }));
-    
-    setNewCompetence({ nom: '', niveau: '3' });
-    setShowAddCompetence(false);
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible d'ajouter la compétence");
+    }
   };
-  
-  const handleDeleteExperience = (keyToDelete: string) => {
+
+  const handleDeleteExperience = async (index: number) => {
+    if (!user || !tempProfile?.experiences) return;
+    
     Alert.alert(
       "Confirmation",
       "Êtes-vous sûr de vouloir supprimer cette expérience ?",
@@ -107,22 +303,36 @@ export default function ProfilePage() {
         },
         {
           text: "Supprimer", 
-          onPress: () => {
-            const newHistorique = { ...tempProfile.historique };
-            delete newHistorique[keyToDelete];
-            
-            setTempProfile(prev => ({
-              ...prev,
-              historique: newHistorique
-            }));
+          onPress: async () => {
+            try {
+              await profileService.removeExperience(user.uid, index);
+              
+              // Mettre à jour l'état local
+              setTempProfile(prev => {
+                if (!prev || !prev.experiences) return prev;
+                const newExperiences = [...prev.experiences];
+                newExperiences.splice(index, 1);
+                return {
+                  ...prev,
+                  experiences: newExperiences
+                };
+              });
+              
+              if (!isEditing) {
+                // Rafraîchir le profil si nous ne sommes pas en mode édition
+                fetchUserProfile();
+              }
+            } catch (err: any) {
+              Alert.alert("Erreur", err.message || "Impossible de supprimer l'expérience");
+            }
           },
           style: "destructive"
         }
       ]
     );
   };
-  
-  const handleDeleteCompetence = (competenceToDelete: string) => {
+
+  const handleDeleteCompetence = (index: number) => {
     Alert.alert(
       "Confirmation",
       "Êtes-vous sûr de vouloir supprimer cette compétence ?",
@@ -134,20 +344,23 @@ export default function ProfilePage() {
         {
           text: "Supprimer", 
           onPress: () => {
-            const newCompetences = { ...tempProfile.competences };
-            delete newCompetences[competenceToDelete];
+            const newCompetences = [...(tempProfile?.competences || [])];
+            newCompetences.splice(index, 1);
             
-            setTempProfile(prev => ({
-              ...prev,
-              competences: newCompetences
-            }));
+            setTempProfile(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                competences: newCompetences
+              };
+            });
           },
           style: "destructive"
         }
       ]
     );
   };
-  
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -157,7 +370,7 @@ export default function ProfilePage() {
             style={styles.profileImage} 
           />
           {isEditing && (
-            <TouchableOpacity style={styles.imageEditButton}>
+            <TouchableOpacity style={styles.imageEditButton} onPress={pickImage}>
               <Ionicons name="camera" size={20} color="#fff" />
             </TouchableOpacity>
           )}
@@ -279,29 +492,33 @@ export default function ProfilePage() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Moyen de transport</Text>
         <View style={styles.transportItem}>  
-          <Text style={styles.transportLabel}>Permifiée</Text>
+          <Text style={styles.transportLabel}>Permis</Text>
           <Switch
             trackColor={{ false: "#767577", true: "#E0485A" }}
             onValueChange={() => {
-              if (isEditing) {
-                setTempProfile(prev => ({...prev, permifiee: !isPermifiee}));
+              if (isEditing && tempProfile) {
+                setTempProfile(prev => {
+                  if (!prev) return prev;
+                  return {...prev, permis: !prev.permis};
+                });
               }
-              setIsPermifiee(previousState => !previousState);
             }}
-            value={isPermifiee}
+            value={tempProfile?.permis || false}
           />
         </View>
         <View style={styles.transportItem}>  
-          <Text style={styles.transportLabel}>Véhiculée</Text>
+          <Text style={styles.transportLabel}>Véhicule</Text>
           <Switch
             trackColor={{ false: "#767577", true: "#E0485A" }}
             onValueChange={() => {
-              if (isEditing) {
-                setTempProfile(prev => ({...prev, vehiculee: !isVehiculee}));
+              if (isEditing && tempProfile) {
+                setTempProfile(prev => {
+                  if (!prev) return prev;
+                  return {...prev, vehicule: !prev.vehicule};
+                });
               }
-              setIsVehiculee(previousState => !previousState);
             }}
-            value={isVehiculee}
+            value={tempProfile?.vehicule || false}
           />
         </View>
       </View>
@@ -311,14 +528,14 @@ export default function ProfilePage() {
         {isEditing ? (
           <TextInput
             style={styles.editBio}
-            value={tempProfile.biographie}
+            value={tempProfile?.biographie || ''}
             onChangeText={(text) => handleChange('biographie', text)}
             placeholder="Parlez de vous..."
             multiline
             numberOfLines={4}
           />
         ) : (
-          <Text style={styles.bio}>{profile.biographie}</Text>
+          <Text style={styles.bio}>{profile?.biographie || ''}</Text>
         )}
       </View>
       
@@ -327,16 +544,34 @@ export default function ProfilePage() {
         
         {isEditing ? (
           <>
-            {Object.entries(tempProfile.historique).map(([key, value], index) => (
+            {tempProfile.experiences.map((experience, index) => (
               <View key={index} style={styles.editHistoryItem}>
                 <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
                 <TextInput 
                   style={styles.editHistoryText}
-                  value={value.toString()}
-                  onChangeText={(text) => handleHistoriqueChange(key, text)}
-                  placeholder="Expérience de bénévolat"
+                  value={experience.title}
+                  onChangeText={(text) => handleExperienceChange(index, 'title', text)}
+                  placeholder="Titre de l'expérience"
                 />
-                <TouchableOpacity onPress={() => handleDeleteExperience(key)} style={styles.deleteButton}>
+                <TextInput 
+                  style={styles.editHistoryText}
+                  value={experience.organization}
+                  onChangeText={(text) => handleExperienceChange(index, 'organization', text)}
+                  placeholder="Organisation"
+                />
+                <TextInput 
+                  style={styles.editHistoryText}
+                  value={experience.date}
+                  onChangeText={(text) => handleExperienceChange(index, 'date', text)}
+                  placeholder="Date"
+                />
+                <TextInput 
+                  style={styles.editHistoryText}
+                  value={experience.description}
+                  onChangeText={(text) => handleExperienceChange(index, 'description', text)}
+                  placeholder="Description"
+                />
+                <TouchableOpacity onPress={() => handleDeleteExperience(index)} style={styles.deleteButton}>
                   <Ionicons name="trash-outline" size={20} color="#F44336" />
                 </TouchableOpacity>
               </View>
@@ -346,10 +581,28 @@ export default function ProfilePage() {
               <View style={styles.addItemContainer}>
                 <TextInput 
                   style={styles.addItemInput}
-                  value={newExperience}
-                  onChangeText={setNewExperience}
-                  placeholder="Nouvelle expérience de bénévolat"
+                  value={newExperience.title}
+                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, title: text }))}
+                  placeholder="Titre de l'expérience"
                   autoFocus
+                />
+                <TextInput 
+                  style={styles.addItemInput}
+                  value={newExperience.organization}
+                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, organization: text }))}
+                  placeholder="Organisation"
+                />
+                <TextInput 
+                  style={styles.addItemInput}
+                  value={newExperience.date}
+                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, date: text }))}
+                  placeholder="Date"
+                />
+                <TextInput 
+                  style={styles.addItemInput}
+                  value={newExperience.description}
+                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, description: text }))}
+                  placeholder="Description"
                 />
                 <View style={styles.addItemActions}>
                   <TouchableOpacity onPress={handleAddExperience} style={styles.addItemButton}>
@@ -369,10 +622,13 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            {Object.entries(profile.historique).map(([key, value], index) => (
+            {profile.experiences.map((experience, index) => (
               <View key={index} style={styles.historyItem}>
                 <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
-                <Text style={styles.historyText}>{value.toString()}</Text>
+                <Text style={styles.historyText}>{experience.title}</Text>
+                <Text style={styles.historyText}>{experience.organization}</Text>
+                <Text style={styles.historyText}>{experience.date}</Text>
+                <Text style={styles.historyText}>{experience.description}</Text>
               </View>
             ))}
           </>
@@ -384,53 +640,41 @@ export default function ProfilePage() {
         
         {isEditing ? (
           <>
-            {Object.entries(tempProfile.competences).map(([key, value], index) => {
-              const rating = parseInt(value);
-              return (
-                <View key={index} style={styles.editCompetenceItem}>
-                  <TextInput 
-                    style={styles.editCompetenceName}
-                    value={key}
-                    onChangeText={(text) => {
-                      // Gérer le changement de nom de la compétence
-                      const newCompetences = {...tempProfile.competences};
-                      delete newCompetences[key];
-                      newCompetences[text] = value;
-                      setTempProfile(prev => ({
-                        ...prev,
-                        competences: newCompetences
-                      }));
-                    }}
-                    placeholder="Compétence"
-                  />
-                  <View style={styles.starsContainer}>
-                    {[1, 2, 3, 4, 5].map(starIndex => (
-                      <TouchableOpacity 
-                        key={starIndex} 
-                        onPress={() => handleCompetenceChange(key, starIndex.toString())}
-                      >
-                        <Ionicons 
-                          name={starIndex <= rating ? "star" : "star-outline"} 
-                          size={18} 
-                          color={starIndex <= rating ? "#E0485A" : "#ddd"} 
-                          style={{ marginRight: 3 }}
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <TouchableOpacity onPress={() => handleDeleteCompetence(key)} style={styles.deleteButton}>
-                    <Ionicons name="trash-outline" size={20} color="#F44336" />
-                  </TouchableOpacity>
+            {tempProfile.competences.map((competence, index) => (
+              <View key={index} style={styles.editCompetenceItem}>
+                <TextInput 
+                  style={styles.editCompetenceName}
+                  value={competence.name}
+                  onChangeText={(text) => handleCompetenceChange(index, 'name', text)}
+                  placeholder="Compétence"
+                />
+                <View style={styles.starsContainer}>
+                  {[1, 2, 3, 4, 5].map(starIndex => (
+                    <TouchableOpacity 
+                      key={starIndex} 
+                      onPress={() => handleCompetenceChange(index, 'level', starIndex)}
+                    >
+                      <Ionicons 
+                        name={starIndex <= competence.level ? "star" : "star-outline"} 
+                        size={18} 
+                        color={starIndex <= competence.level ? "#E0485A" : "#ddd"} 
+                        style={{ marginRight: 3 }}
+                      />
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              );
-            })}
+                <TouchableOpacity onPress={() => handleDeleteCompetence(index)} style={styles.deleteButton}>
+                  <Ionicons name="trash-outline" size={20} color="#F44336" />
+                </TouchableOpacity>
+              </View>
+            ))}
             
             {showAddCompetence ? (
               <View style={styles.addItemContainer}>
                 <TextInput 
                   style={styles.addItemInput}
-                  value={newCompetence.nom}
-                  onChangeText={(text) => setNewCompetence(prev => ({ ...prev, nom: text }))}
+                  value={newCompetence.name}
+                  onChangeText={(text) => setNewCompetence(prev => ({ ...prev, name: text }))}
                   placeholder="Nouvelle compétence"
                   autoFocus
                 />
@@ -438,12 +682,12 @@ export default function ProfilePage() {
                   {[1, 2, 3, 4, 5].map(starIndex => (
                     <TouchableOpacity 
                       key={starIndex} 
-                      onPress={() => setNewCompetence(prev => ({ ...prev, niveau: starIndex.toString() }))}
+                      onPress={() => setNewCompetence(prev => ({ ...prev, level: starIndex }))}
                     >
                       <Ionicons 
-                        name={starIndex <= parseInt(newCompetence.niveau) ? "star" : "star-outline"} 
+                        name={starIndex <= newCompetence.level ? "star" : "star-outline"} 
                         size={18} 
-                        color={starIndex <= parseInt(newCompetence.niveau) ? "#E0485A" : "#ddd"} 
+                        color={starIndex <= newCompetence.level ? "#E0485A" : "#ddd"} 
                         style={{ marginRight: 3 }}
                       />
                     </TouchableOpacity>
@@ -467,30 +711,23 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            {Object.entries(profile.competences).map(([key, value], index) => {
-              const rating = parseInt(value);
-              const stars = [];
-              for (let i = 0; i < 5; i++) {
-                stars.push(
-                  <Ionicons 
-                    key={i} 
-                    name={i < rating ? "star" : "star-outline"} 
-                    size={18} 
-                    color={i < rating ? "#E0485A" : "#ddd"} 
-                    style={{ marginRight: 3 }}
-                  />
-                );
-              }
-              return (
-                <View key={index} style={styles.competenceItem}>
-                  <Text style={styles.competenceName}>{key}</Text>
-                  <View style={styles.starsContainer}>
-                    {stars}
-                  </View>
+            {profile.competences.map((competence, index) => (
+              <View key={index} style={styles.competenceItem}>
+                <Text style={styles.competenceName}>{competence.name}</Text>
+                <View style={styles.starsContainer}>
+                  {[1, 2, 3, 4, 5].map(starIndex => (
+                    <Ionicons 
+                      key={starIndex} 
+                      name={starIndex <= competence.level ? "star" : "star-outline"} 
+                      size={18} 
+                      color={starIndex <= competence.level ? "#E0485A" : "#ddd"} 
+                      style={{ marginRight: 3 }}
+                    />
+                  ))}
                 </View>
-              );
-            })}
-          </>
+              </View>
+            ))}
+           </>
         )}
       </View>
       

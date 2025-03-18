@@ -39,12 +39,10 @@ export const MISSION_CATEGORIES: Category[] = [
   }
 ];
 
-// Fonction utilitaire pour obtenir une catégorie par son ID
 export const getCategoryById = (id: string): Category | undefined => {
   return MISSION_CATEGORIES.find(category => category.id === id);
 };
 
-// Fonction utilitaire pour obtenir une catégorie par son nom
 export const getCategoryByName = (name: string): Category | undefined => {
   return MISSION_CATEGORIES.find(category => 
     category.name.toLowerCase() === name.toLowerCase()
