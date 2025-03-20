@@ -121,9 +121,17 @@ export const getUserProfile = async (uid: string): Promise<IProfile | null> => {
  */
 export const updateUserProfile = async (uid: string, profileData: Partial<IProfile>): Promise<void> => {
   try {
+    // Filtrer les valeurs undefined
+    const cleanedData: Record<string, any> = {};
+    Object.entries(profileData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        cleanedData[key] = value;
+      }
+    });
+    
     // Ajouter la date de modification
     const updatedData = {
-      ...profileData,
+      ...cleanedData,
       dateModification: new Date().toISOString()
     };
     

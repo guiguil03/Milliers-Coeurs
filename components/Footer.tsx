@@ -46,7 +46,20 @@ export const Footer: React.FC<FooterProps> = () => {
         </Link>
 
 
-       
+        <Link href="/mes-reservations" asChild>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push('/mes-reservations')}
+          >
+            <Ionicons 
+              name={isActive('/mes-reservations') ? 'calendar' : 'calendar-outline'} 
+              size={24} 
+              color={isActive('/mes-reservations') ? '#000000' : '#212529'} 
+            />
+            <Text style={[styles.navText, isActive('/mes-reservations') && styles.activeText]}>Réservations</Text>
+          </TouchableOpacity>
+        </Link>
+
 
         <Link href="/messages" asChild>
           <TouchableOpacity 

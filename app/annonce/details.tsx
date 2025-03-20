@@ -5,14 +5,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { annonceService, Annonce } from '../../services/annonceFirebaseService';
 import { getCategoryById, getCategoryByName } from '../../constants/categories';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { reservationService } from '../../services/reservationService';
+import { ReservationStatut } from '../../models/Reservation';
 
 export default function AnnonceDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [annonce, setAnnonce] = useState<Annonce | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isReservationLoading, setIsReservationLoading] = useState(false);
+  const [hasReserved, setHasReserved] = useState(false);
   const router = useRouter();
-  const { user } = useAuthContext();
+  const { user, userType } = useAuthContext();
 
   useEffect(() => {
     if (!id) {
@@ -23,6 +27,22 @@ export default function AnnonceDetailsScreen() {
 
     loadAnnonceDetails();
   }, [id]);
+
+  useEffect(() => {
+    // Vérifie si l'utilisateur a déjà réservé cette annonce
+    const checkReservationStatus = async () => {
+      if (user && id) {
+        try {
+          const reserved = await reservationService.hasBenevoleReservedAnnonce(id as string, user.uid);
+          setHasReserved(reserved);
+        } catch (error) {
+          console.error('Erreur lors de la vérification de la réservation:', error);
+        }
+      }
+    };
+
+    checkReservationStatus();
+  }, [user, id]);
 
   const loadAnnonceDetails = async () => {
     try {
@@ -43,14 +63,105 @@ export default function AnnonceDetailsScreen() {
     }
   };
 
-  const handleReservation = () => {
-    // À implémenter
+  const handleReservation = async () => {
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      Alert.alert(
+        "Connexion requise", 
+        "Vous devez vous connecter pour réserver une place.",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Se connecter", onPress: () => router.push("/profile") }
+        ]
+      );
+      return;
+    }
+
+    // Vérifier si l'utilisateur est un bénévole
+    if (userType !== 'benevole') {
+      Alert.alert(
+        "Action non disponible", 
+        "Seuls les bénévoles peuvent réserver des missions."
+      );
+      return;
+    }
+
+    // Vérifier si l'annonce n'est pas celle de l'utilisateur
+    if (annonce && annonce.utilisateurId === user.uid) {
+      Alert.alert(
+        "Action non disponible", 
+        "Vous ne pouvez pas réserver votre propre annonce."
+      );
+      return;
+    }
+
+    // Si l'utilisateur a déjà réservé, proposer d'annuler la réservation
+    if (hasReserved) {
+      Alert.alert(
+        "Réservation existante",
+        "Vous avez déjà réservé une place pour cette mission. Souhaitez-vous annuler votre réservation ?",
+        [
+          { text: "Non", style: "cancel" },
+          { 
+            text: "Oui, annuler", 
+            style: "destructive",
+            onPress: async () => {
+              try {
+                setIsReservationLoading(true);
+                // Récupérer la réservation existante
+                const reservations = await reservationService.getReservationsByBenevole(user.uid);
+                const reservation = reservations.find(r => r.annonceId === id);
+                
+                if (reservation && reservation.id) {
+                  // Annuler la réservation
+                  await reservationService.updateReservationStatus(reservation.id, ReservationStatut.Annulee);
+                  setHasReserved(false);
+                  Alert.alert("Réservation annulée", "Votre réservation a été annulée avec succès.");
+                }
+              } catch (error) {
+                console.error("Erreur lors de l'annulation de la réservation:", error);
+                Alert.alert("Erreur", "Impossible d'annuler la réservation. Veuillez réessayer.");
+              } finally {
+                setIsReservationLoading(false);
+              }
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    // Créer une nouvelle réservation
     Alert.alert(
-      "Réservation",
-      "Voulez-vous vraiment réserver une place pour cette mission ?",
+      "Réserver une place",
+      "Voulez-vous réserver une place pour cette mission ?",
       [
         { text: "Annuler", style: "cancel" },
-        { text: "Confirmer", onPress: () => Alert.alert("Réservation confirmée", "Votre réservation a été prise en compte.") }
+        { 
+          text: "Confirmer", 
+          onPress: async () => {
+            try {
+              setIsReservationLoading(true);
+              await reservationService.createReservation({
+                annonceId: id as string,
+                benevoleId: user.uid,
+                benevoleName: user.displayName || undefined,
+                benevoleEmail: user.email || undefined
+              });
+              
+              setHasReserved(true);
+              Alert.alert(
+                "Réservation effectuée", 
+                "Votre demande de réservation a été enregistrée. Vous pouvez consulter son statut dans votre profil."
+              );
+            } catch (error) {
+              console.error("Erreur lors de la réservation:", error);
+              Alert.alert("Erreur", "Impossible de créer la réservation. Veuillez réessayer.");
+            } finally {
+              setIsReservationLoading(false);
+            }
+          }
+        }
       ]
     );
   };
@@ -279,11 +390,23 @@ export default function AnnonceDetailsScreen() {
       {/* Actions */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity 
-          style={[styles.actionButton, styles.reserverButton]}
+          style={[
+            styles.actionButton, 
+            styles.reserverButton,
+            hasReserved && styles.cancelButton,
+            isReservationLoading && styles.disabledButton
+          ]}
           onPress={handleReservation}
+          disabled={isReservationLoading}
         >
-          <Ionicons name="calendar" size={22} color="#fff" />
-          <Text style={styles.actionButtonText}>RÉSERVER</Text>
+          {isReservationLoading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name={hasReserved ? "close-circle" : "calendar"} size={22} color="#fff" />
+              <Text style={styles.actionButtonText}>{hasReserved ? "ANNULER" : "RÉSERVER"}</Text>
+            </>
+          )}
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -380,22 +503,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailIcon: {
-    marginRight: 12,
-    marginTop: 2,
+    marginRight: 16,
+    marginTop: 3,
   },
   detailContent: {
     flex: 1,
   },
   detailLabel: {
-    fontSize: 14,
     fontWeight: 'bold',
-    color: '#666',
+    fontSize: 16,
     marginBottom: 4,
   },
   detailText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   imagesContainer: {
     backgroundColor: '#fff',
@@ -403,7 +525,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 12,
   },
@@ -411,65 +533,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   additionalImage: {
-    width: 120,
-    height: 120,
+    width: 150,
+    height: 150,
     borderRadius: 8,
-    marginRight: 10,
+    marginRight: 12,
   },
   actionsContainer: {
     flexDirection: 'row',
     padding: 16,
     backgroundColor: '#fff',
-    marginBottom: 20,
+    justifyContent: 'space-between',
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 6,
-    marginHorizontal: 4,
+    padding: 14,
+    borderRadius: 8,
+    marginHorizontal: 5,
   },
   reserverButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#03A9F4',
   },
   contactButton: {
-    backgroundColor: '#03A9F4',
+    backgroundColor: '#4CAF50',
   },
   favorisButton: {
     backgroundColor: '#E0485A',
   },
+  cancelButton: {
+    backgroundColor: '#F44336',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
   actionButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    marginLeft: 6,
+    fontSize: 14,
+    marginLeft: 8,
   },
   errorText: {
     fontSize: 16,
     color: '#E0485A',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
   retryButton: {
     backgroundColor: '#E0485A',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   retryText: {
-    color: '#fff',
+    color: 'white',
     fontWeight: 'bold',
   },
   backButton: {
     backgroundColor: '#333',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   backButtonText: {
-    color: '#fff',
+    color: 'white',
     fontWeight: 'bold',
   },
 });

@@ -52,10 +52,27 @@ const Header = () => {
         </TouchableOpacity>
         
         {user ? (
-          <View style={styles.userInfoContainer}>
-            <Text style={styles.greeting}>
-              Bonjour, <Text style={styles.userName}>{userDisplayName}</Text>
-            </Text>
+          <View style={styles.userSection}>
+            <View style={styles.userInfoContainer}>
+              <Text style={styles.greeting}>
+                Bonjour, <Text style={styles.userName}>{userDisplayName}</Text>
+              </Text>
+              <TouchableOpacity 
+                style={styles.logoutButton} 
+                onPress={async () => {
+                  await logout();
+                  router.push('/');
+                }}
+              >
+                <Text style={styles.logoutButtonText}>Déconnexion</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.navButton}
+                onPress={() => router.push('/mes-reservations')}
+              >
+                <Text style={styles.navButtonText}>Mes Réservations</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
@@ -109,31 +126,58 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  userSection: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+  },
   userInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
   },
   greeting: {
-    fontSize: 14,
     color: '#fff',
+    fontSize: 14,
   },
   userName: {
     fontWeight: 'bold',
-    color: '#fff',
   },
   loginButton: {
     backgroundColor: '#fff',
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 15,
     borderRadius: 6,
   },
   loginButtonText: {
     color: '#E0485A',
     fontWeight: 'bold',
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  navButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginLeft: 5,
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  navButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 });
 

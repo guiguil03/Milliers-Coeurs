@@ -1,29 +1,19 @@
 import { Stack } from 'expo-router';
 import { ThemeProvider } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
 import { DefaultTheme } from '@react-navigation/native';
-import { View, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, SafeAreaView } from 'react-native';
+import { AuthProvider } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { Footer } from '../components/Footer';
-import { AuthProvider } from '../contexts/AuthContext';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <AuthProvider>
       <ThemeProvider value={DefaultTheme}>
         <SafeAreaView style={styles.container}>
           <Header />
           <View style={styles.content}>
-            <Stack 
-              screenOptions={{ 
-                headerShown: false,
-                animation: 'fade',
-                contentStyle: { backgroundColor: 'transparent' } 
-              }} 
-            />
+            <Stack />
           </View>
           <Footer />
         </SafeAreaView>

@@ -29,8 +29,23 @@ export default function MessagesPage() {
           return;
         }
         
+        // Solution temporaire: Toujours utiliser les messages fictifs en attendant la mise à jour des règles Firebase
+        console.log("Utilisation des données fictives en attendant la mise à jour des règles de sécurité Firebase");
+        setMessagesList(dummyMessages);
+        setLoading(false);
+        
+        /* Commenté temporairement en attendant la mise à jour des règles Firebase
         const userId = getCurrentUserId();
         const conversations = await getUserConversations(userId);
+        
+        // Cas où les conversations sont vides mais pas d'erreur (possible problème d'autorisation)
+        if (conversations.length === 0) {
+          console.log("Aucune conversation trouvée ou permissions insuffisantes");
+          // On utilise les données fictives pour ne pas bloquer l'interface
+          setMessagesList(dummyMessages);
+          setLoading(false);
+          return;
+        }
         
         // Transformer les conversations Firebase en format de l'application
         const transformedMessages = conversations.map((conversation, index) => {
@@ -52,9 +67,14 @@ export default function MessagesPage() {
         });
         
         setMessagesList(transformedMessages);
-      } catch (err) {
+        */
+      } catch (err: any) {
         console.error('Erreur lors du chargement des conversations :', err);
-        setError('Impossible de charger les conversations');
+        if (err.code === 'permission_denied') {
+          setError('Vous n\'avez pas les autorisations nécessaires pour accéder à vos conversations');
+        } else {
+          setError('Impossible de charger les conversations');
+        }
         // Utiliser les messages fictifs en cas d'erreur
         setMessagesList(dummyMessages);
       } finally {

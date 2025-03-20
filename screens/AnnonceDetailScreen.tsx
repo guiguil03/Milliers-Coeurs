@@ -9,13 +9,17 @@ import {
   ActivityIndicator,
   Alert,
   Share,
-  Linking
+  Linking,
+  Modal,
+  TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import { useAuthContext } from '../contexts/AuthContext';
+import { reservationService } from '../services/reservationService';
+import { ReservationStatut } from '../models/Reservation';
 
 // Définir les types pour la navigation
 type RootStackParamList = {
@@ -37,11 +41,21 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
   const [annonce, setAnnonce] = useState<Annonce | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuthContext();
+  const { user, userType } = useAuthContext();
+
+  // États pour la réservation
+  const [reservationModalVisible, setReservationModalVisible] = useState<boolean>(false);
+  const [reservationMessage, setReservationMessage] = useState<string>('');
+  const [isReservationLoading, setIsReservationLoading] = useState<boolean>(false);
+  const [hasReserved, setHasReserved] = useState<boolean>(false);
 
   useEffect(() => {
     fetchAnnonceDetail();
-  }, [annonceId]);
+    // Vérifier si l'utilisateur a déjà réservé cette annonce
+    if (user) {
+      checkReservationStatus();
+    }
+  }, [annonceId, user]);
 
   const fetchAnnonceDetail = async () => {
     try {
@@ -55,6 +69,17 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
       setError('Impossible de charger les détails. Veuillez réessayer.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkReservationStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const hasReservation = await reservationService.hasBenevoleReservedAnnonce(annonceId, user.uid);
+      setHasReserved(hasReservation);
+    } catch (error) {
+      console.error('Erreur lors de la vérification du statut de réservation:', error);
     }
   };
 
@@ -104,6 +129,126 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
             } catch (error) {
               console.error('Erreur lors de la suppression:', error);
               Alert.alert("Erreur", "Impossible de supprimer l'annonce. Veuillez réessayer.");
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Fonction pour ouvrir la modal de réservation
+  const openReservationModal = () => {
+    if (!user) {
+      Alert.alert(
+        "Connexion requise",
+        "Vous devez être connecté pour réserver cette annonce.",
+        [
+          { text: "OK" }
+        ]
+      );
+      return;
+    }
+    
+    setReservationModalVisible(true);
+  };
+
+  // Fonction pour soumettre une réservation
+  const handleReservation = async () => {
+    if (!user || !annonce) return;
+    
+    try {
+      setIsReservationLoading(true);
+      
+      // Créer la réservation
+      await reservationService.createReservation({
+        annonceId: annonceId,
+        benevoleId: user.uid,
+        benevoleName: user.displayName || '',
+        benevoleEmail: user.email || '',
+        message: reservationMessage.trim() || ''
+      });
+      
+      setReservationModalVisible(false);
+      setReservationMessage('');
+      setHasReserved(true);
+      
+      // Rafraîchir les détails de l'annonce pour mettre à jour le nombre de places
+      fetchAnnonceDetail();
+      
+      Alert.alert(
+        "Réservation envoyée",
+        "Votre demande de réservation a été envoyée avec succès. L'association vous contactera pour confirmer votre participation.",
+        [
+          { text: "OK" }
+        ]
+      );
+    } catch (error) {
+      console.error('Erreur lors de la réservation:', error);
+      Alert.alert(
+        "Erreur",
+        "Une erreur est survenue lors de la réservation. Veuillez réessayer.",
+        [
+          { text: "OK" }
+        ]
+      );
+    } finally {
+      setIsReservationLoading(false);
+    }
+  };
+
+  // Fonction pour annuler une réservation
+  const handleCancelReservation = async () => {
+    if (!user) return;
+    
+    Alert.alert(
+      "Annuler la réservation",
+      "Êtes-vous sûr de vouloir annuler votre réservation ?",
+      [
+        { text: "Non", style: "cancel" },
+        { 
+          text: "Oui", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              // Récupérer toutes les réservations de l'utilisateur pour cette annonce
+              const reservations = await reservationService.getReservationsByBenevole(user.uid);
+              const reservation = reservations.find(r => r.annonceId === annonceId && 
+                (r.statut === ReservationStatut.EnAttente || r.statut === ReservationStatut.Confirmee));
+              
+              if (reservation && reservation.id) {
+                // Mettre à jour le statut de la réservation
+                await reservationService.updateReservationStatus(
+                  reservation.id, 
+                  ReservationStatut.Annulee
+                );
+                
+                setHasReserved(false);
+                // Rafraîchir les détails de l'annonce
+                fetchAnnonceDetail();
+                
+                Alert.alert(
+                  "Réservation annulée",
+                  "Votre réservation a été annulée avec succès.",
+                  [
+                    { text: "OK" }
+                  ]
+                );
+              } else {
+                throw new Error("Réservation introuvable");
+              }
+            } catch (error) {
+              console.error('Erreur lors de l\'annulation de la réservation:', error);
+              Alert.alert(
+                "Erreur",
+                "Une erreur est survenue lors de l'annulation. Veuillez réessayer.",
+                [
+                  { text: "OK" }
+                ]
+              );
+            } finally {
               setLoading(false);
             }
           }
@@ -246,7 +391,75 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
             </TouchableOpacity>
           </>
         )}
+
+        {/* Afficher le bouton de réservation uniquement pour les bénévoles qui ne sont pas les créateurs */}
+        {userType === 'benevole' && !isOwner && (
+          hasReserved ? (
+            <TouchableOpacity style={styles.reservationButton} onPress={handleCancelReservation}>
+              <Ionicons name="close-circle-outline" size={24} color="#fff" />
+              <Text style={styles.reservationButtonText}>Annuler ma réservation</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={[
+                styles.reservationButton, 
+                (annonce.places !== undefined && annonce.places <= 0) ? styles.disabledButton : {}
+              ]} 
+              onPress={openReservationModal}
+              disabled={annonce.places !== undefined && annonce.places <= 0}
+            >
+              <Ionicons name="calendar-outline" size={24} color="#fff" />
+              <Text style={styles.reservationButtonText}>Réserver cette mission</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
+
+      {/* Modal de réservation */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={reservationModalVisible}
+        onRequestClose={() => setReservationModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Réserver cette mission</Text>
+            
+            <Text style={styles.modalLabel}>Message pour l'association (optionnel)</Text>
+            <TextInput
+              style={styles.modalInput}
+              multiline={true}
+              numberOfLines={4}
+              placeholder="Présentez-vous et expliquez pourquoi vous souhaitez participer..."
+              value={reservationMessage}
+              onChangeText={setReservationMessage}
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelButton} 
+                onPress={() => setReservationModalVisible(false)}
+                disabled={isReservationLoading}
+              >
+                <Text style={styles.modalCancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.modalConfirmButton} 
+                onPress={handleReservation}
+                disabled={isReservationLoading}
+              >
+                {isReservationLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmButtonText}>Confirmer</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -403,6 +616,93 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
     color: '#666',
+  },
+  // Styles pour le bouton de réservation
+  reservationButton: {
+    backgroundColor: '#E0485A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 8,
+    width: '100%',
+  },
+  reservationButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  // Styles pour la modal de réservation
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#333',
+  },
+  modalLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    color: '#555',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalCancelButton: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#E0485A',
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  modalConfirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 

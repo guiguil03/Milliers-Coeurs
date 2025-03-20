@@ -41,6 +41,12 @@ const database = rtdb; // Utiliser directement l'instance rtdb exportée du fich
 // Obtenir les conversations d'un utilisateur
 export const getUserConversations = async (userId: string): Promise<IConversation[]> => {
   try {
+    // Vérifier si l'utilisateur est authentifié
+    if (!auth.currentUser) {
+      console.warn("Aucun utilisateur authentifié pour accéder aux conversations");
+      return [];
+    }
+
     const conversationsRef = ref(database, 'conversations');
     const conversationsQuery = query(conversationsRef, orderByChild('participants'));
     
@@ -67,12 +73,16 @@ export const getUserConversations = async (userId: string): Promise<IConversatio
         
         resolve(conversations);
       }, (error) => {
-        reject(error);
+        console.error("Erreur d'accès aux conversations:", error);
+        // Résoudre avec un tableau vide plutôt que de rejeter la promesse
+        // pour éviter de bloquer l'interface utilisateur
+        resolve([]);
       });
     });
   } catch (error) {
     console.error("Erreur lors de la récupération des conversations :", error);
-    throw error;
+    // Retourner un tableau vide plutôt que de lancer une erreur
+    return [];
   }
 };
 
@@ -161,7 +171,7 @@ export const sendMessage = async (message: Omit<IMessage, 'id'>): Promise<string
     
     if (conversationSnapshot.exists()) {
       const conversationData = conversationSnapshot.val();
-      const unreadCount = { ...conversationData.unread_count } || {};
+      const unreadCount = conversationData.unread_count ? { ...conversationData.unread_count } : {};
       
       // Incrémenter le compteur de messages non lus pour le destinataire
       if (!unreadCount[message.receiver_id]) {
@@ -213,7 +223,7 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
     
     if (conversationSnapshot.exists()) {
       const data = conversationSnapshot.val();
-      const unreadCount = { ...data.unread_count };
+      const unreadCount = data.unread_count ? { ...data.unread_count } : {};
       
       // Réinitialiser le compteur pour cet utilisateur
       if (unreadCount && unreadCount[userId]) {

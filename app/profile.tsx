@@ -7,13 +7,14 @@ import { ICompetence, IExperience, IProfile } from '../data/profil';
 import { profileService } from '../services/profileService';
 import { storage } from '../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import Header from '../components/Header';
 import firebase from 'firebase/app';
 import 'firebase/firestore';
 
 export default function ProfilePage() {
-  const { user, userType } = useAuthContext();
+  const { user, userType, logout } = useAuthContext();
+  const router = useRouter();
   const [profile, setProfile] = useState<IProfile | null>(null);
   const [tempProfile, setTempProfile] = useState<IProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -155,8 +156,25 @@ export default function ProfilePage() {
     
     try {
       setLoading(true);
-      await profileService.updateProfile(user.uid, tempProfile);
-      setProfile(tempProfile);
+      
+      // S'assurer que les valeurs ne sont pas undefined
+      const updatedProfile = {
+        ...tempProfile,
+        // Fournir des valeurs par défaut pour les champs obligatoires
+        prenom: tempProfile.prenom || '',
+        nom: tempProfile.nom || '',
+        email: tempProfile.email || '',
+        image: tempProfile.image || '',
+        // Convertir undefined en chaînes vides pour les champs optionnels
+        adresse: tempProfile.adresse || '',
+        code_postal: tempProfile.code_postal || '',
+        ville: tempProfile.ville || '',
+        telephone: tempProfile.telephone || '',
+        biographie: tempProfile.biographie || ''
+      };
+      
+      await profileService.updateProfile(user.uid, updatedProfile);
+      setProfile(updatedProfile);
       setIsEditing(false);
       Alert.alert("Succès", "Vos modifications ont été enregistrées.");
     } catch (err: any) {
@@ -361,377 +379,401 @@ export default function ProfilePage() {
     );
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible de se déconnecter");
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.profileImageContainer}>
-          <Image 
-            source={{ uri: isEditing ? tempProfile.image : profile.image }} 
-            style={styles.profileImage} 
-          />
-          {isEditing && (
-            <TouchableOpacity style={styles.imageEditButton} onPress={pickImage}>
-              <Ionicons name="camera" size={20} color="#fff" />
-            </TouchableOpacity>
-          )}
+      {loading ? (
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#E0485A" />
         </View>
-        
-        {isEditing ? (
-          <View style={styles.editFieldContainer}>
-            <TextInput 
-              style={styles.editField}
-              value={tempProfile.prenom}
-              onChangeText={(text) => handleChange('prenom', text)}
-              placeholder="Prénom"
-            />
-            <TextInput 
-              style={styles.editField}
-              value={tempProfile.nom}
-              onChangeText={(text) => handleChange('nom', text)}
-              placeholder="Nom"
-            />
-            <TextInput 
-              style={styles.editField}
-              value={tempProfile.email}
-              onChangeText={(text) => handleChange('email', text)}
-              placeholder="Email"
-              keyboardType="email-address"
-            />
-          </View>
-        ) : (
-          <>
-            <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
-            <Text style={styles.email}>{profile.email}</Text>
-          </>
-        )}
-        
-        {!isEditing ? (
-          <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-            <Ionicons name="pencil-outline" size={24} color="#E0485A"/>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.editActions}>
-            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-              <Ionicons name="checkmark" size={24} color="#fff"/>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
-              <Ionicons name="close" size={24} color="#fff"/>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Coordonnées</Text>
-        
-        {isEditing ? (
-          <>
-            <View style={styles.editItemContainer}>
-              <Ionicons name="location-outline" size={22} color="#666" />
-              <TextInput 
-                style={styles.editInfoText}
-                value={tempProfile.adresse}
-                onChangeText={(text) => handleChange('adresse', text)}
-                placeholder="Adresse"
-              />
-            </View>
-            <View style={styles.editItemContainer}>
-              <TextInput 
-                style={[styles.editInfoText, {marginLeft: 32}]}
-                value={tempProfile.code_postal}
-                onChangeText={(text) => handleChange('code_postal', text)}
-                placeholder="Code postal"
-                keyboardType="numeric"
-              />
-              <TextInput 
-                style={styles.editInfoText}
-                value={tempProfile.ville}
-                onChangeText={(text) => handleChange('ville', text)}
-                placeholder="Ville"
-              />
-            </View>
-            <View style={styles.editItemContainer}>
-              <Ionicons name="mail-outline" size={22} color="#666" />
-              <TextInput 
-                style={styles.editInfoText}
-                value={tempProfile.email}
-                onChangeText={(text) => handleChange('email', text)}
-                placeholder="Email"
-                keyboardType="email-address"
-              />
-            </View>
-            <View style={styles.editItemContainer}>
-              <Ionicons name="phone-portrait" size={22} color="#666" />
-              <TextInput 
-                style={styles.editInfoText}
-                value={tempProfile.telephone}
-                onChangeText={(text) => handleChange('telephone', text)}
-                placeholder="Téléphone"
-                keyboardType="phone-pad"
-              />
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={styles.infoItem}>
-              <Ionicons name="location-outline" size={22} color="#666" />
-              <Text style={styles.infoText}>{profile.adresse}, {profile.code_postal} {profile.ville}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="mail-outline" size={22} color="#666" />
-              <Text style={styles.infoText}>{profile.email}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="phone-portrait" size={22} color="#666" />
-              <Text style={styles.infoText}>{profile.telephone}</Text>
-            </View>
-          </>
-        )}
-      </View>
-      
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Moyen de transport</Text>
-        <View style={styles.transportItem}>  
-          <Text style={styles.transportLabel}>Permis</Text>
-          <Switch
-            trackColor={{ false: "#767577", true: "#E0485A" }}
-            onValueChange={() => {
-              if (isEditing && tempProfile) {
-                setTempProfile(prev => {
-                  if (!prev) return prev;
-                  return {...prev, permis: !prev.permis};
-                });
-              }
-            }}
-            value={tempProfile?.permis || false}
-          />
+      ) : error ? (
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
-        <View style={styles.transportItem}>  
-          <Text style={styles.transportLabel}>Véhicule</Text>
-          <Switch
-            trackColor={{ false: "#767577", true: "#E0485A" }}
-            onValueChange={() => {
-              if (isEditing && tempProfile) {
-                setTempProfile(prev => {
-                  if (!prev) return prev;
-                  return {...prev, vehicule: !prev.vehicule};
-                });
-              }
-            }}
-            value={tempProfile?.vehicule || false}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>À propos de moi</Text>
-        {isEditing ? (
-          <TextInput
-            style={styles.editBio}
-            value={tempProfile?.biographie || ''}
-            onChangeText={(text) => handleChange('biographie', text)}
-            placeholder="Parlez de vous..."
-            multiline
-            numberOfLines={4}
-          />
-        ) : (
-          <Text style={styles.bio}>{profile?.biographie || ''}</Text>
-        )}
-      </View>
-      
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mon historique</Text>
-        
-        {isEditing ? (
-          <>
-            {tempProfile.experiences.map((experience, index) => (
-              <View key={index} style={styles.editHistoryItem}>
-                <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
-                <TextInput 
-                  style={styles.editHistoryText}
-                  value={experience.title}
-                  onChangeText={(text) => handleExperienceChange(index, 'title', text)}
-                  placeholder="Titre de l'expérience"
-                />
-                <TextInput 
-                  style={styles.editHistoryText}
-                  value={experience.organization}
-                  onChangeText={(text) => handleExperienceChange(index, 'organization', text)}
-                  placeholder="Organisation"
-                />
-                <TextInput 
-                  style={styles.editHistoryText}
-                  value={experience.date}
-                  onChangeText={(text) => handleExperienceChange(index, 'date', text)}
-                  placeholder="Date"
-                />
-                <TextInput 
-                  style={styles.editHistoryText}
-                  value={experience.description}
-                  onChangeText={(text) => handleExperienceChange(index, 'description', text)}
-                  placeholder="Description"
-                />
-                <TouchableOpacity onPress={() => handleDeleteExperience(index)} style={styles.deleteButton}>
-                  <Ionicons name="trash-outline" size={20} color="#F44336" />
+      ) : (
+        <View>
+          <View style={styles.header}>
+            <View style={styles.profileImageContainer}>
+              <Image 
+                source={{ uri: isEditing ? tempProfile.image : profile.image }} 
+                style={styles.profileImage} 
+              />
+              {isEditing && (
+                <TouchableOpacity style={styles.imageEditButton} onPress={pickImage}>
+                  <Ionicons name="camera" size={20} color="#fff" />
                 </TouchableOpacity>
-              </View>
-            ))}
+              )}
+            </View>
             
-            {showAddExperience ? (
-              <View style={styles.addItemContainer}>
+            {isEditing ? (
+              <View style={styles.editFieldContainer}>
                 <TextInput 
-                  style={styles.addItemInput}
-                  value={newExperience.title}
-                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, title: text }))}
-                  placeholder="Titre de l'expérience"
-                  autoFocus
+                  style={styles.editField}
+                  value={tempProfile.prenom}
+                  onChangeText={(text) => handleChange('prenom', text)}
+                  placeholder="Prénom"
                 />
                 <TextInput 
-                  style={styles.addItemInput}
-                  value={newExperience.organization}
-                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, organization: text }))}
-                  placeholder="Organisation"
+                  style={styles.editField}
+                  value={tempProfile.nom}
+                  onChangeText={(text) => handleChange('nom', text)}
+                  placeholder="Nom"
                 />
                 <TextInput 
-                  style={styles.addItemInput}
-                  value={newExperience.date}
-                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, date: text }))}
-                  placeholder="Date"
+                  style={styles.editField}
+                  value={tempProfile.email}
+                  onChangeText={(text) => handleChange('email', text)}
+                  placeholder="Email"
+                  keyboardType="email-address"
                 />
-                <TextInput 
-                  style={styles.addItemInput}
-                  value={newExperience.description}
-                  onChangeText={(text) => setNewExperience(prev => ({ ...prev, description: text }))}
-                  placeholder="Description"
-                />
-                <View style={styles.addItemActions}>
-                  <TouchableOpacity onPress={handleAddExperience} style={styles.addItemButton}>
-                    <Ionicons name="checkmark" size={20} color="#4CAF50" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowAddExperience(false)} style={styles.addItemButton}>
-                    <Ionicons name="close" size={20} color="#F44336" />
-                  </TouchableOpacity>
-                </View>
               </View>
             ) : (
-              <TouchableOpacity onPress={() => setShowAddExperience(true)} style={styles.addButton}>
-                <Ionicons name="add-circle" size={24} color="#E0485A" />
-                <Text style={styles.addButtonText}>Ajouter une expérience</Text>
-              </TouchableOpacity>
+              <>
+                <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
+                <Text style={styles.email}>{profile.email}</Text>
+              </>
             )}
-          </>
-        ) : (
-          <>
-            {profile.experiences.map((experience, index) => (
-              <View key={index} style={styles.historyItem}>
-                <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
-                <Text style={styles.historyText}>{experience.title}</Text>
-                <Text style={styles.historyText}>{experience.organization}</Text>
-                <Text style={styles.historyText}>{experience.date}</Text>
-                <Text style={styles.historyText}>{experience.description}</Text>
-              </View>
-            ))}
-          </>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mes compétences</Text>
-        
-        {isEditing ? (
-          <>
-            {tempProfile.competences.map((competence, index) => (
-              <View key={index} style={styles.editCompetenceItem}>
-                <TextInput 
-                  style={styles.editCompetenceName}
-                  value={competence.name}
-                  onChangeText={(text) => handleCompetenceChange(index, 'name', text)}
-                  placeholder="Compétence"
-                />
-                <View style={styles.starsContainer}>
-                  {[1, 2, 3, 4, 5].map(starIndex => (
-                    <TouchableOpacity 
-                      key={starIndex} 
-                      onPress={() => handleCompetenceChange(index, 'level', starIndex)}
-                    >
-                      <Ionicons 
-                        name={starIndex <= competence.level ? "star" : "star-outline"} 
-                        size={18} 
-                        color={starIndex <= competence.level ? "#E0485A" : "#ddd"} 
-                        style={{ marginRight: 3 }}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity onPress={() => handleDeleteCompetence(index)} style={styles.deleteButton}>
-                  <Ionicons name="trash-outline" size={20} color="#F44336" />
+            
+            {!isEditing ? (
+              <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
+                <Ionicons name="pencil-outline" size={24} color="#E0485A"/>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.editActions}>
+                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                  <Ionicons name="checkmark" size={24} color="#fff"/>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+                  <Ionicons name="close" size={24} color="#fff"/>
                 </TouchableOpacity>
               </View>
-            ))}
-            
-            {showAddCompetence ? (
-              <View style={styles.addItemContainer}>
-                <TextInput 
-                  style={styles.addItemInput}
-                  value={newCompetence.name}
-                  onChangeText={(text) => setNewCompetence(prev => ({ ...prev, name: text }))}
-                  placeholder="Nouvelle compétence"
-                  autoFocus
-                />
-                <View style={styles.starsContainer}>
-                  {[1, 2, 3, 4, 5].map(starIndex => (
-                    <TouchableOpacity 
-                      key={starIndex} 
-                      onPress={() => setNewCompetence(prev => ({ ...prev, level: starIndex }))}
-                    >
-                      <Ionicons 
-                        name={starIndex <= newCompetence.level ? "star" : "star-outline"} 
-                        size={18} 
-                        color={starIndex <= newCompetence.level ? "#E0485A" : "#ddd"} 
-                        style={{ marginRight: 3 }}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.addItemActions}>
-                  <TouchableOpacity onPress={handleAddCompetence} style={styles.addItemButton}>
-                    <Ionicons name="checkmark" size={20} color="#4CAF50" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowAddCompetence(false)} style={styles.addItemButton}>
-                    <Ionicons name="close" size={20} color="#F44336" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity onPress={() => setShowAddCompetence(true)} style={styles.addButton}>
-                <Ionicons name="add-circle" size={24} color="#E0485A" />
-                <Text style={styles.addButtonText}>Ajouter une compétence</Text>
-              </TouchableOpacity>
             )}
-          </>
-        ) : (
-          <>
-            {profile.competences.map((competence, index) => (
-              <View key={index} style={styles.competenceItem}>
-                <Text style={styles.competenceName}>{competence.name}</Text>
-                <View style={styles.starsContainer}>
-                  {[1, 2, 3, 4, 5].map(starIndex => (
-                    <Ionicons 
-                      key={starIndex} 
-                      name={starIndex <= competence.level ? "star" : "star-outline"} 
-                      size={18} 
-                      color={starIndex <= competence.level ? "#E0485A" : "#ddd"} 
-                      style={{ marginRight: 3 }}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Coordonnées</Text>
+            
+            {isEditing ? (
+              <>
+                <View style={styles.editItemContainer}>
+                  <Ionicons name="location-outline" size={22} color="#666" />
+                  <TextInput 
+                    style={styles.editInfoText}
+                    value={tempProfile.adresse}
+                    onChangeText={(text) => handleChange('adresse', text)}
+                    placeholder="Adresse"
+                  />
+                </View>
+                <View style={styles.editItemContainer}>
+                  <TextInput 
+                    style={[styles.editInfoText, {marginLeft: 32}]}
+                    value={tempProfile.code_postal}
+                    onChangeText={(text) => handleChange('code_postal', text)}
+                    placeholder="Code postal"
+                    keyboardType="numeric"
+                  />
+                  <TextInput 
+                    style={styles.editInfoText}
+                    value={tempProfile.ville}
+                    onChangeText={(text) => handleChange('ville', text)}
+                    placeholder="Ville"
+                  />
+                </View>
+                <View style={styles.editItemContainer}>
+                  <Ionicons name="mail-outline" size={22} color="#666" />
+                  <TextInput 
+                    style={styles.editInfoText}
+                    value={tempProfile.email}
+                    onChangeText={(text) => handleChange('email', text)}
+                    placeholder="Email"
+                    keyboardType="email-address"
+                  />
+                </View>
+                <View style={styles.editItemContainer}>
+                  <Ionicons name="phone-portrait" size={22} color="#666" />
+                  <TextInput 
+                    style={styles.editInfoText}
+                    value={tempProfile.telephone}
+                    onChangeText={(text) => handleChange('telephone', text)}
+                    placeholder="Téléphone"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.infoItem}>
+                  <Ionicons name="location-outline" size={22} color="#666" />
+                  <Text style={styles.infoText}>{profile.adresse}, {profile.code_postal} {profile.ville}</Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Ionicons name="mail-outline" size={22} color="#666" />
+                  <Text style={styles.infoText}>{profile.email}</Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Ionicons name="phone-portrait" size={22} color="#666" />
+                  <Text style={styles.infoText}>{profile.telephone}</Text>
+                </View>
+              </>
+            )}
+          </View>
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Moyen de transport</Text>
+            <View style={styles.transportItem}>  
+              <Text style={styles.transportLabel}>Permis</Text>
+              <Switch
+                trackColor={{ false: "#767577", true: "#E0485A" }}
+                onValueChange={() => {
+                  if (isEditing && tempProfile) {
+                    setTempProfile(prev => {
+                      if (!prev) return prev;
+                      return {...prev, permis: !prev.permis};
+                    });
+                  }
+                }}
+                value={tempProfile?.permis || false}
+              />
+            </View>
+            <View style={styles.transportItem}>  
+              <Text style={styles.transportLabel}>Véhicule</Text>
+              <Switch
+                trackColor={{ false: "#767577", true: "#E0485A" }}
+                onValueChange={() => {
+                  if (isEditing && tempProfile) {
+                    setTempProfile(prev => {
+                      if (!prev) return prev;
+                      return {...prev, vehicule: !prev.vehicule};
+                    });
+                  }
+                }}
+                value={tempProfile?.vehicule || false}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>À propos de moi</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.editBio}
+                value={tempProfile?.biographie || ''}
+                onChangeText={(text) => handleChange('biographie', text)}
+                placeholder="Parlez de vous..."
+                multiline
+                numberOfLines={4}
+              />
+            ) : (
+              <Text style={styles.bio}>{profile?.biographie || ''}</Text>
+            )}
+          </View>
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mon historique</Text>
+            
+            {isEditing ? (
+              <>
+                {tempProfile.experiences.map((experience, index) => (
+                  <View key={index} style={styles.editHistoryItem}>
+                    <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
+                    <TextInput 
+                      style={styles.editHistoryText}
+                      value={experience.title}
+                      onChangeText={(text) => handleExperienceChange(index, 'title', text)}
+                      placeholder="Titre de l'expérience"
                     />
-                  ))}
-                </View>
-              </View>
-            ))}
-           </>
-        )}
-      </View>
-      
-      <View style={styles.emptySpace}></View>
+                    <TextInput 
+                      style={styles.editHistoryText}
+                      value={experience.organization}
+                      onChangeText={(text) => handleExperienceChange(index, 'organization', text)}
+                      placeholder="Organisation"
+                    />
+                    <TextInput 
+                      style={styles.editHistoryText}
+                      value={experience.date}
+                      onChangeText={(text) => handleExperienceChange(index, 'date', text)}
+                      placeholder="Date"
+                    />
+                    <TextInput 
+                      style={styles.editHistoryText}
+                      value={experience.description}
+                      onChangeText={(text) => handleExperienceChange(index, 'description', text)}
+                      placeholder="Description"
+                    />
+                    <TouchableOpacity onPress={() => handleDeleteExperience(index)} style={styles.deleteButton}>
+                      <Ionicons name="trash-outline" size={20} color="#F44336" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                
+                {showAddExperience ? (
+                  <View style={styles.addItemContainer}>
+                    <TextInput 
+                      style={styles.addItemInput}
+                      value={newExperience.title}
+                      onChangeText={(text) => setNewExperience(prev => ({ ...prev, title: text }))}
+                      placeholder="Titre de l'expérience"
+                      autoFocus
+                    />
+                    <TextInput 
+                      style={styles.addItemInput}
+                      value={newExperience.organization}
+                      onChangeText={(text) => setNewExperience(prev => ({ ...prev, organization: text }))}
+                      placeholder="Organisation"
+                    />
+                    <TextInput 
+                      style={styles.addItemInput}
+                      value={newExperience.date}
+                      onChangeText={(text) => setNewExperience(prev => ({ ...prev, date: text }))}
+                      placeholder="Date"
+                    />
+                    <TextInput 
+                      style={styles.addItemInput}
+                      value={newExperience.description}
+                      onChangeText={(text) => setNewExperience(prev => ({ ...prev, description: text }))}
+                      placeholder="Description"
+                    />
+                    <View style={styles.addItemActions}>
+                      <TouchableOpacity onPress={handleAddExperience} style={styles.addItemButton}>
+                        <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setShowAddExperience(false)} style={styles.addItemButton}>
+                        <Ionicons name="close" size={20} color="#F44336" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => setShowAddExperience(true)} style={styles.addButton}>
+                    <Ionicons name="add-circle" size={24} color="#E0485A" />
+                    <Text style={styles.addButtonText}>Ajouter une expérience</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <>
+                {profile.experiences.map((experience, index) => (
+                  <View key={index} style={styles.historyItem}>
+                    <Ionicons name="checkmark-circle" size={24} color="#E0485A" />
+                    <Text style={styles.historyText}>{experience.title}</Text>
+                    <Text style={styles.historyText}>{experience.organization}</Text>
+                    <Text style={styles.historyText}>{experience.date}</Text>
+                    <Text style={styles.historyText}>{experience.description}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mes compétences</Text>
+            
+            {isEditing ? (
+              <>
+                {tempProfile.competences.map((competence, index) => (
+                  <View key={index} style={styles.editCompetenceItem}>
+                    <TextInput 
+                      style={styles.editCompetenceName}
+                      value={competence.name}
+                      onChangeText={(text) => handleCompetenceChange(index, 'name', text)}
+                      placeholder="Compétence"
+                    />
+                    <View style={styles.starsContainer}>
+                      {[1, 2, 3, 4, 5].map(starIndex => (
+                        <TouchableOpacity 
+                          key={starIndex} 
+                          onPress={() => handleCompetenceChange(index, 'level', starIndex)}
+                        >
+                          <Ionicons 
+                            name={starIndex <= competence.level ? "star" : "star-outline"} 
+                            size={18} 
+                            color={starIndex <= competence.level ? "#E0485A" : "#ddd"} 
+                            style={{ marginRight: 3 }}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <TouchableOpacity onPress={() => handleDeleteCompetence(index)} style={styles.deleteButton}>
+                      <Ionicons name="trash-outline" size={20} color="#F44336" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                
+                {showAddCompetence ? (
+                  <View style={styles.addItemContainer}>
+                    <TextInput 
+                      style={styles.addItemInput}
+                      value={newCompetence.name}
+                      onChangeText={(text) => setNewCompetence(prev => ({ ...prev, name: text }))}
+                      placeholder="Nouvelle compétence"
+                      autoFocus
+                    />
+                    <View style={styles.starsContainer}>
+                      {[1, 2, 3, 4, 5].map(starIndex => (
+                        <TouchableOpacity 
+                          key={starIndex} 
+                          onPress={() => setNewCompetence(prev => ({ ...prev, level: starIndex }))}
+                        >
+                          <Ionicons 
+                            name={starIndex <= newCompetence.level ? "star" : "star-outline"} 
+                            size={18} 
+                            color={starIndex <= newCompetence.level ? "#E0485A" : "#ddd"} 
+                            style={{ marginRight: 3 }}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={styles.addItemActions}>
+                      <TouchableOpacity onPress={handleAddCompetence} style={styles.addItemButton}>
+                        <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setShowAddCompetence(false)} style={styles.addItemButton}>
+                        <Ionicons name="close" size={20} color="#F44336" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => setShowAddCompetence(true)} style={styles.addButton}>
+                    <Ionicons name="add-circle" size={24} color="#E0485A" />
+                    <Text style={styles.addButtonText}>Ajouter une compétence</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <>
+                {profile.competences.map((competence, index) => (
+                  <View key={index} style={styles.competenceItem}>
+                    <Text style={styles.competenceName}>{competence.name}</Text>
+                    <View style={styles.starsContainer}>
+                      {[1, 2, 3, 4, 5].map(starIndex => (
+                        <Ionicons 
+                          key={starIndex} 
+                          name={starIndex <= competence.level ? "star" : "star-outline"} 
+                          size={18} 
+                          color={starIndex <= competence.level ? "#E0485A" : "#ddd"} 
+                          style={{ marginRight: 3 }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+               </>
+            )}
+          </View>
+          
+          <View style={styles.emptySpace}></View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutButtonText}>Se déconnecter</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -740,6 +782,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    minHeight: 300,
+  },
+  errorText: {
+    color: '#E0485A',
+    fontSize: 16,
+    textAlign: 'center',
   },
   header: {
     backgroundColor: '#fff',
@@ -985,5 +1038,18 @@ const styles = StyleSheet.create({
   },
   emptySpace: {
     height: 100,
+  },
+  logoutButton: {
+    backgroundColor: '#E0485A',
+    padding: 15,
+    marginHorizontal: 20,
+    borderRadius: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    color: '#fff',
   },
 });

@@ -1,10 +1,11 @@
-import React from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Alert, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Annonce } from '../services/annonceFirebaseService';
 import { useAuthContext } from '../contexts/AuthContext';
 import { annonceService } from '../services/annonceFirebaseService';
 import { useRouter } from 'expo-router';
+import { reservationService } from '../services/reservationService';
 
 // Propriétés nécessaires pour le composant
 interface AnnonceItemProps {
@@ -18,8 +19,9 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
   onPress,
   onDelete
 }) => {
-  const { user } = useAuthContext();
+  const { user, userType } = useAuthContext();
   const router = useRouter();
+  const [isReserving, setIsReserving] = useState(false);
   
   // S'assurer que l'annonce existe et extraire ses propriétés avec des valeurs par défaut
   if (!annonce) {
@@ -31,7 +33,8 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
     organisation = 'Organisation', 
     description = 'Aucune description', 
     important = 'Information importante',
-    utilisateurId
+    utilisateurId,
+    id: annonceId
   } = annonce;
   
   // Vérifier si l'utilisateur connecté est le propriétaire de l'annonce
@@ -71,6 +74,88 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
     );
   };
 
+  // Fonction pour gérer la réservation
+  const handleReservation = async () => {
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      Alert.alert(
+        "Connexion requise", 
+        "Vous devez vous connecter pour réserver une place.",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Se connecter", onPress: () => router.push("/profile") }
+        ]
+      );
+      return;
+    }
+
+    // Vérifier si l'utilisateur est le propriétaire de l'annonce
+    if (isOwner) {
+      Alert.alert(
+        "Action non disponible", 
+        "Vous ne pouvez pas réserver votre propre annonce."
+      );
+      return;
+    }
+
+    try {
+      setIsReserving(true);
+      
+      // Vérifier si l'utilisateur a déjà réservé cette annonce
+      const hasReserved = await reservationService.hasBenevoleReservedAnnonce(annonceId || '', user.uid);
+      
+      if (hasReserved) {
+        Alert.alert(
+          "Déjà réservé", 
+          "Vous avez déjà réservé une place pour cette mission. Vous pouvez consulter vos réservations dans votre profil."
+        );
+        return;
+      }
+
+      // Confirmer la réservation
+      Alert.alert(
+        "Réserver une place",
+        "Voulez-vous réserver une place pour cette mission ?",
+        [
+          { text: "Annuler", style: "cancel" },
+          { 
+            text: "Confirmer", 
+            onPress: async () => {
+              try {
+                await reservationService.createReservation({
+                  annonceId: annonceId || '',
+                  benevoleId: user.uid,
+                  benevoleName: user.displayName || undefined,
+                  benevoleEmail: user.email || undefined
+                });
+                
+                Alert.alert(
+                  "Réservation effectuée", 
+                  "Votre demande de réservation a été enregistrée. Vous pouvez consulter son statut dans votre profil."
+                );
+              } catch (error) {
+                console.error("Erreur lors de la réservation:", error);
+                Alert.alert("Erreur", "Impossible de créer la réservation. Veuillez réessayer.");
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error("Erreur lors de la vérification de réservation:", error);
+      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setIsReserving(false);
+    }
+  };
+
+  // Fonction pour gérer la réponse
+  const handleRepondre = () => {
+    if (onPress) {
+      onPress(); // Rediriger vers la page de détail de l'annonce
+    }
+  };
+
   return (
     <TouchableOpacity 
       style={styles.annonceContainer} 
@@ -106,14 +191,27 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       </View>
       
       <View style={styles.actions}>
-        <TouchableOpacity style={[styles.actionButton, styles.repondreButton]}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.repondreButton]} 
+          onPress={handleRepondre}
+        >
           <Text style={styles.actionText}>RÉPONDRE</Text>
           <Ionicons name="chatbubble-outline" size={18} color="#fff" />
         </TouchableOpacity>
         
-        <TouchableOpacity style={[styles.actionButton, styles.reserverButton]}>
-          <Text style={styles.actionText}>RÉSERVER</Text>
-          <Ionicons name="calendar-outline" size={18} color="#fff" />
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.reserverButton]} 
+          onPress={handleReservation}
+          disabled={isReserving}
+        >
+          {isReserving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.actionText}>RÉSERVER</Text>
+              <Ionicons name="calendar-outline" size={18} color="#fff" />
+            </>
+          )}
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.actionButton, styles.partagerButton]}>
