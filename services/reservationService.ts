@@ -52,6 +52,16 @@ export const reservationService = {
         throw new Error("Cette annonce n'existe plus");
       }
       
+      // Vérifier si l'utilisateur a déjà une réservation active pour cette annonce
+      const hasExisting = await reservationService.hasExistingReservation(
+        reservation.benevoleId, 
+        reservation.annonceId
+      );
+      
+      if (hasExisting) {
+        throw new Error("Vous avez déjà réservé cette annonce");
+      }
+      
       // Créer l'objet réservation avec le statut par défaut et s'assurer qu'aucun champ n'est undefined
       const cleanReservation = {
         annonceId: reservation.annonceId,
@@ -240,6 +250,47 @@ export const reservationService = {
   },
   
   /**
+   * Vérifie si un utilisateur a déjà une réservation active pour une annonce donnée
+   * @param userId ID de l'utilisateur
+   * @param annonceId ID de l'annonce
+   * @returns true si l'utilisateur a déjà une réservation, false sinon
+   */
+  hasExistingReservation: async (userId: string, annonceId: string): Promise<boolean> => {
+    try {
+      if (!userId || !annonceId) {
+        return false;
+      }
+      
+      // Recherche des réservations existantes non annulées pour cet utilisateur et cette annonce
+      const reservationsQuery = query(
+        collection(db, 'reservations'),
+        where('benevoleId', '==', userId),
+        where('annonceId', '==', annonceId),
+        where('statut', 'in', [
+          ReservationStatut.EnAttente, 
+          ReservationStatut.Confirmee
+        ])
+      );
+      
+      const querySnapshot = await getDocs(reservationsQuery);
+      return !querySnapshot.empty;
+    } catch (error) {
+      console.error("Erreur lors de la vérification des réservations existantes:", error);
+      return false;
+    }
+  },
+  
+  /**
+   * Vérifie si un bénévole a déjà réservé une annonce spécifique
+   * @param annonceId ID de l'annonce
+   * @param benevoleId ID du bénévole
+   * @returns true si le bénévole a déjà une réservation active pour cette annonce
+   */
+  hasBenevoleReservedAnnonce: async (annonceId: string, benevoleId: string): Promise<boolean> => {
+    return reservationService.hasExistingReservation(benevoleId, annonceId);
+  },
+  
+  /**
    * Mettre à jour le statut d'une réservation
    * @param id ID de la réservation
    * @param statut Nouveau statut
@@ -270,29 +321,6 @@ export const reservationService = {
       }
     } catch (error) {
       console.error("Erreur lors de la mise à jour du statut de la réservation :", error);
-      throw error;
-    }
-  },
-  
-  /**
-   * Vérifier si un bénévole a déjà réservé une annonce
-   * @param annonceId ID de l'annonce
-   * @param benevoleId ID du bénévole
-   * @returns true si une réservation existe, false sinon
-   */
-  hasBenevoleReservedAnnonce: async (annonceId: string, benevoleId: string): Promise<boolean> => {
-    try {
-      const reservationsQuery = query(
-        collection(db, 'reservations'),
-        where('annonceId', '==', annonceId),
-        where('benevoleId', '==', benevoleId),
-        where('statut', 'in', [ReservationStatut.EnAttente, ReservationStatut.Confirmee])
-      );
-      
-      const querySnapshot = await getDocs(reservationsQuery);
-      return !querySnapshot.empty;
-    } catch (error) {
-      console.error("Erreur lors de la vérification de réservation :", error);
       throw error;
     }
   },

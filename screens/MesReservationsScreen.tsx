@@ -200,6 +200,46 @@ const MesReservationsScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
         
+        {/* Détails supplémentaires de l'annonce */}
+        <View style={styles.detailsSection}>
+          {item.annonce?.date && (
+            <View style={styles.detailItem}>
+              <Ionicons name="calendar-outline" size={16} color="#666" />
+              <Text style={styles.detailText}>Date: {item.annonce.date}</Text>
+            </View>
+          )}
+          
+          {item.annonce?.lieu && (
+            <View style={styles.detailItem}>
+              <Ionicons name="location-outline" size={16} color="#666" />
+              <Text style={styles.detailText}>Lieu: {item.annonce.lieu}</Text>
+            </View>
+          )}
+          
+          {item.annonce?.categorie && (
+            <View style={styles.detailItem}>
+              <Ionicons name="bookmark-outline" size={16} color="#666" />
+              <Text style={styles.detailText}>Catégorie: {item.annonce.categorie}</Text>
+            </View>
+          )}
+          
+          {item.annonce?.description && (
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionLabel}>Description:</Text>
+              <Text style={styles.descriptionText}>{item.annonce.description}</Text>
+            </View>
+          )}
+          
+          {(item.annonce?.contact?.email || item.annonce?.email) && (
+            <View style={styles.detailItem}>
+              <Ionicons name="mail-outline" size={16} color="#666" />
+              <Text style={styles.detailText}>
+                Contact: {item.annonce.contact?.email || item.annonce.email}
+              </Text>
+            </View>
+          )}
+        </View>
+        
         {(item.statut === ReservationStatut.EnAttente || item.statut === ReservationStatut.Confirmee) && (
           <TouchableOpacity 
             style={styles.cancelButton}
@@ -384,6 +424,32 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  detailsSection: {
+    padding: 16,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  descriptionContainer: {
+    marginBottom: 16,
+  },
+  descriptionLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: '#666',
   },
   commentSection: {
     padding: 16,

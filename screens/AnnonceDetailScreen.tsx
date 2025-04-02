@@ -160,6 +160,18 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
     try {
       setIsReservationLoading(true);
       
+      // Vérifier si l'utilisateur a déjà une réservation pour cette annonce
+      const hasExistingReservation = await reservationService.hasBenevoleReservedAnnonce(annonceId, user.uid);
+      if (hasExistingReservation) {
+        Alert.alert(
+          "Réservation impossible",
+          "Vous avez déjà réservé cette annonce. Vous ne pouvez pas réserver la même annonce plusieurs fois.",
+          [{ text: "OK" }]
+        );
+        setReservationModalVisible(false);
+        return;
+      }
+      
       // Créer la réservation
       await reservationService.createReservation({
         annonceId: annonceId,
@@ -183,15 +195,25 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
           { text: "OK" }
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la réservation:', error);
-      Alert.alert(
-        "Erreur",
-        "Une erreur est survenue lors de la réservation. Veuillez réessayer.",
-        [
-          { text: "OK" }
-        ]
-      );
+      
+      // Afficher un message d'erreur spécifique si l'utilisateur a déjà réservé
+      if (error.message && error.message.includes("déjà réservé")) {
+        Alert.alert(
+          "Réservation impossible",
+          "Vous avez déjà réservé cette annonce. Vous ne pouvez pas réserver la même annonce plusieurs fois.",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          "Erreur",
+          "Une erreur est survenue lors de la réservation. Veuillez réessayer.",
+          [
+            { text: "OK" }
+          ]
+        );
+      }
     } finally {
       setIsReservationLoading(false);
     }
