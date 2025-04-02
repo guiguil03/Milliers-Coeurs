@@ -1,6 +1,5 @@
 [build]
-  command = "npx expo start "
- publish = "dist"   
+  command = "npm run build:web"
+  publish = "dist"
 [build.environment]
-  GO_VERSION = "1.19"
   NODE_VERSION = "18"
