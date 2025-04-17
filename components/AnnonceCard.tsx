@@ -2,12 +2,15 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Annonce } from '../services/annonceFirebaseService';
+import { AnnonceWithFavori } from '../hooks/useAnnonce';
+import FavoriteButton from './FavoriteButton';
 
 interface AnnonceCardProps {
-  annonce: Annonce;
+  annonce: Annonce | AnnonceWithFavori;
+  onToggleFavorite?: (annonceId: string, isFavorite: boolean) => void;
 }
 
-const AnnonceCard: React.FC<AnnonceCardProps> = ({ annonce }) => {
+const AnnonceCard: React.FC<AnnonceCardProps> = ({ annonce, onToggleFavorite }) => {
   // Fonction pour raccourcir la description si nécessaire
   const truncateDescription = (text: string, maxLength: number = 150) => {
     if (!text) return '';
@@ -28,6 +31,15 @@ const AnnonceCard: React.FC<AnnonceCardProps> = ({ annonce }) => {
         <View style={styles.titleContainer}>
           <Text style={styles.organisation}>{annonce.organisation}</Text>
           {annonce.temps && <Text style={styles.time}>{annonce.temps}</Text>}
+        </View>
+        
+        {/* Bouton Favoris */}
+        <View style={styles.favoriteButton}>
+          <FavoriteButton 
+            annonceId={annonce.id || ''} 
+            initialIsFavorite={'isFavori' in annonce ? annonce.isFavori : false}
+            onToggle={(isFavorite) => onToggleFavorite && onToggleFavorite(annonce.id || '', isFavorite)}
+          />
         </View>
       </View>
       
@@ -93,6 +105,11 @@ const styles = StyleSheet.create({
   titleContainer: {
     marginLeft: 12,
     flex: 1,
+  },
+  favoriteButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   organisation: {
     fontWeight: 'bold',

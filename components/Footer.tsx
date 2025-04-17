@@ -46,6 +46,21 @@ export const Footer: React.FC<FooterProps> = () => {
         </Link>
 
 
+        <Link href="/favoris" asChild>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push('/favoris')}
+          >
+            <Ionicons 
+              name={isActive('/favoris') ? 'heart' : 'heart-outline'} 
+              size={24} 
+              color={isActive('/favoris') ? '#000000' : '#212529'} 
+            />
+            <Text style={[styles.navText, isActive('/favoris') && styles.activeText]}>Favoris</Text>
+          </TouchableOpacity>
+        </Link>
+
+
         <Link href="/mes-reservations" asChild>
           <TouchableOpacity 
             style={styles.navItem}

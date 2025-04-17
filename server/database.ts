@@ -28,7 +28,7 @@ const sequelize = new Sequelize(
   config[env].password,
   {
     host: config[env].host,
-    port: config[env].port,
+    port: config[env].port,https://github.com/guiguil03/TDD-Test  
     dialect: config[env].dialect,
     logging: env === 'development' ? console.log : false,
     dialectOptions: config[env].dialectOptions

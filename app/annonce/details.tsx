@@ -7,16 +7,19 @@ import { getCategoryById, getCategoryByName } from '../../constants/categories';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { reservationService } from '../../services/reservationService';
 import { ReservationStatut } from '../../models/Reservation';
+import { useAnnonce, AnnonceWithFavori } from '../../hooks/useAnnonce';
 
 export default function AnnonceDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [annonce, setAnnonce] = useState<Annonce | null>(null);
+  const [annonce, setAnnonce] = useState<AnnonceWithFavori | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReservationLoading, setIsReservationLoading] = useState(false);
   const [hasReserved, setHasReserved] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const router = useRouter();
   const { user, userType } = useAuthContext();
+  const { getAnnonceByIdWithFavoriStatus, addToFavoris, removeFromFavoris } = useAnnonce();
 
   useEffect(() => {
     if (!id) {
@@ -49,7 +52,8 @@ export default function AnnonceDetailsScreen() {
       setLoading(true);
       setError(null);
       
-      const annonceDetails = await annonceService.getAnnonceById(id as string);
+      // Utiliser la fonction qui récupère l'annonce avec son statut de favori
+      const annonceDetails = await getAnnonceByIdWithFavoriStatus(id as string);
       if (!annonceDetails) {
         setError('Annonce non trouvée');
       } else {
@@ -167,15 +171,65 @@ export default function AnnonceDetailsScreen() {
   };
 
   const handleContact = () => {
-    // À implémenter
-    Alert.alert(
-      "Contact",
-      "Souhaitez-vous contacter l'organisateur ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Confirmer", onPress: () => Alert.alert("Message", "Une fenêtre de message va s'ouvrir.") }
-      ]
-    );
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      Alert.alert(
+        "Connexion requise", 
+        "Vous devez vous connecter pour contacter l'organisateur.",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Se connecter", onPress: () => router.push("/profile") }
+        ]
+      );
+      return;
+    }
+
+    // Vérifier si l'annonce a un utilisateur associé
+    if (!annonce || !annonce.utilisateurId) {
+      Alert.alert("Erreur", "Impossible de contacter l'organisateur de cette annonce.");
+      return;
+    }
+
+    // Rediriger vers la page de messagerie avec l'ID de l'annonce
+    router.push(`/messages/new?annonceId=${id}`);
+  };
+
+  // Fonction pour gérer l'ajout/suppression des favoris
+  const handleToggleFavorite = async () => {
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      Alert.alert(
+        "Connexion requise", 
+        "Vous devez vous connecter pour ajouter des favoris.",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Se connecter", onPress: () => router.push("/profile") }
+        ]
+      );
+      return;
+    }
+
+    if (!annonce || !id) return;
+
+    try {
+      setIsFavoriteLoading(true);
+      
+      if (annonce.isFavori) {
+        // Retirer des favoris
+        await removeFromFavoris(id);
+      } else {
+        // Ajouter aux favoris
+        await addToFavoris(id);
+      }
+      
+      // Recharger les détails de l'annonce pour mettre à jour le statut de favori
+      await loadAnnonceDetails();
+    } catch (error) {
+      console.error('Erreur lors de la modification des favoris:', error);
+      Alert.alert("Erreur", "Une erreur est survenue lors de la modification des favoris.");
+    } finally {
+      setIsFavoriteLoading(false);
+    }
   };
 
   // Fonction pour supprimer l'annonce
@@ -419,9 +473,22 @@ export default function AnnonceDetailsScreen() {
         
         <TouchableOpacity 
           style={[styles.actionButton, styles.favorisButton]}
+          onPress={handleToggleFavorite}
         >
-          <Ionicons name="heart" size={22} color="#fff" />
-          <Text style={styles.actionButtonText}>FAVORIS</Text>
+          {isFavoriteLoading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons 
+                name={annonce?.isFavori ? "heart" : "heart-outline"} 
+                size={22} 
+                color="#fff" 
+              />
+              <Text style={styles.actionButtonText}>
+                {annonce?.isFavori ? "RETIRER" : "FAVORIS"}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>

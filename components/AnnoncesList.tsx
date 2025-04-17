@@ -78,23 +78,6 @@ const AnnoncesList: React.FC<Props> = ({ filter }) => {
     />
   );
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#E0485A" />
-        <Text style={styles.loadingText}>Chargement des annonces...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={40} color="#E0485A" />
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
 
   if (annonces.length === 0) {
     return (

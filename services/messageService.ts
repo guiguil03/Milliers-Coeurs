@@ -32,7 +32,7 @@ export interface IConversation {
     content: string;
     timestamp: any;
   };
-  unread_count?: Record<string, number>; // userId -> nombre de messages non lus
+  unread_count?: Record<string, number>;
 }
 
 // Obtenir une référence à la base de données
@@ -226,27 +226,9 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
       const unreadCount = data.unread_count ? { ...data.unread_count } : {};
       
       // Réinitialiser le compteur pour cet utilisateur
-      if (unreadCount && unreadCount[userId]) {
+      if (unreadCount[userId]) {
         unreadCount[userId] = 0;
         await update(conversationRef, { unread_count: unreadCount });
-      }
-      
-      // Marquer tous les messages non lus comme lus
-      const messagesRef = ref(database, `messages/${conversationId}`);
-      const messagesSnapshot = await get(messagesRef);
-      
-      if (messagesSnapshot.exists()) {
-        const updatePromises: Promise<void>[] = [];
-        
-        messagesSnapshot.forEach((childSnapshot) => {
-          const messageData = childSnapshot.val();
-          if (messageData.receiver_id === userId && !messageData.read) {
-            const messageRef = ref(database, `messages/${conversationId}/${childSnapshot.key}`);
-            updatePromises.push(update(messageRef, { read: true }));
-          }
-        });
-        
-        await Promise.all(updatePromises);
       }
     }
   } catch (error) {
@@ -258,8 +240,7 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
 // Créer une nouvelle conversation
 export const createConversation = async (participants: string[]): Promise<string> => {
   try {
-    console.log("Création d'une nouvelle conversation entre:", participants);
-    
+    // Créer un timestamp
     const timestamp = new Date().getTime();
     
     const conversationData: IConversation = {

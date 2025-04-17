@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuthContext } from '../contexts/AuthContext';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import { favorisService } from '../services/favorisService';
 
 // Types pour les annonces
 export type AnnonceStatusType = 'active' | 'terminée' | 'annulée';
@@ -22,6 +23,10 @@ export interface CreateAnnonceData {
     email?: string;
     telephone?: string;
   };
+}
+
+export interface AnnonceWithFavori extends Annonce {
+  isFavori?: boolean;
 }
 
 export const useAnnonce = () => {
@@ -46,14 +51,14 @@ export const useAnnonce = () => {
       const annonceData = {
         ...data,
         // Gérer les valeurs optionnelles
-        lieu: data.lieu || null,
-        categorie: data.categorie || null,
-        logo: data.logo || null,
-        places: data.places || null,
+        lieu: data.lieu || undefined,
+        categorie: data.categorie || undefined,
+        logo: data.logo || undefined,
+        places: data.places || undefined,
         contact: data.contact ? {
-          email: data.contact.email || null,
-          telephone: data.contact.telephone || null
-        } : null,
+          email: data.contact.email || undefined,
+          telephone: data.contact.telephone || undefined
+        } : undefined,
         utilisateurId: user.uid,
         statut: 'active' as AnnonceStatusType
       };
@@ -104,16 +109,16 @@ export const useAnnonce = () => {
       if (data.description !== undefined) updateData.description = data.description;
       if (data.date !== undefined) updateData.date = data.date;
       if (data.important !== undefined) updateData.important = data.important;
-      if (data.lieu !== undefined) updateData.lieu = data.lieu || null;
-      if (data.categorie !== undefined) updateData.categorie = data.categorie || null;
-      if (data.logo !== undefined) updateData.logo = data.logo || null;
-      if (data.places !== undefined) updateData.places = data.places || null;
+      if (data.lieu !== undefined) updateData.lieu = data.lieu || undefined;
+      if (data.categorie !== undefined) updateData.categorie = data.categorie || undefined;
+      if (data.logo !== undefined) updateData.logo = data.logo || undefined;
+      if (data.places !== undefined) updateData.places = data.places || undefined;
       
       // Gérer l'objet contact
       if (data.contact !== undefined) {
         updateData.contact = {
-          email: data.contact.email || null,
-          telephone: data.contact.telephone || null
+          email: data.contact.email || undefined,
+          telephone: data.contact.telephone || undefined
         };
       }
 
@@ -269,6 +274,163 @@ export const useAnnonce = () => {
     }
   };
 
+  /**
+   * Ajouter une annonce aux favoris
+   */
+  const addToFavoris = async (annonceId: string): Promise<boolean> => {
+    if (!user) {
+      setError('Vous devez être connecté pour ajouter des favoris');
+      return false;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await favorisService.addFavori(user.uid, annonceId);
+      return true;
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout aux favoris:', err);
+      setError('Une erreur est survenue lors de l\'ajout aux favoris');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Supprimer une annonce des favoris
+   */
+  const removeFromFavoris = async (annonceId: string): Promise<boolean> => {
+    if (!user) {
+      setError('Vous devez être connecté pour gérer vos favoris');
+      return false;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await favorisService.removeFavori(user.uid, annonceId);
+      return true;
+    } catch (err) {
+      console.error('Erreur lors de la suppression du favori:', err);
+      setError('Une erreur est survenue lors de la suppression du favori');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Vérifier si une annonce est dans les favoris
+   */
+  const isFavori = async (annonceId: string): Promise<boolean> => {
+    if (!user) {
+      return false;
+    }
+
+    try {
+      return await favorisService.isFavori(user.uid, annonceId);
+    } catch (err) {
+      console.error('Erreur lors de la vérification du favori:', err);
+      return false;
+    }
+  };
+
+  /**
+   * Récupérer toutes les annonces en favoris
+   */
+  const getFavorisAnnonces = async (): Promise<AnnonceWithFavori[]> => {
+    if (!user) {
+      setError('Vous devez être connecté pour voir vos favoris');
+      return [];
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const annonces = await favorisService.getFavorisAnnonces(user.uid);
+      // Marquer toutes les annonces comme favorites
+      return annonces.map(annonce => ({ ...annonce, isFavori: true }));
+    } catch (err) {
+      console.error('Erreur lors de la récupération des favoris:', err);
+      setError('Une erreur est survenue lors de la récupération de vos favoris');
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Récupérer toutes les annonces avec statut favori
+   */
+  const getAllAnnoncesWithFavoriStatus = async (): Promise<AnnonceWithFavori[]> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const annonces = await annonceService.getAllAnnonces();
+      
+      if (!user) {
+        return annonces.map(annonce => ({ ...annonce, isFavori: false }));
+      }
+      
+      // Pour chaque annonce, vérifier si elle est en favori
+      const annoncesWithFavori: AnnonceWithFavori[] = [];
+      
+      for (const annonce of annonces) {
+        const favoriStatus = await favorisService.isFavori(user.uid, annonce.id || '');
+        annoncesWithFavori.push({
+          ...annonce,
+          isFavori: favoriStatus
+        });
+      }
+      
+      return annoncesWithFavori;
+    } catch (err) {
+      console.error('Erreur lors de la récupération des annonces avec statut favori:', err);
+      setError('Une erreur est survenue lors de la récupération des annonces');
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Récupérer une annonce par ID avec statut favori
+   */
+  const getAnnonceByIdWithFavoriStatus = async (id: string): Promise<AnnonceWithFavori | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const annonce = await annonceService.getAnnonceById(id);
+      
+      if (!annonce) {
+        return null;
+      }
+      
+      if (!user) {
+        return { ...annonce, isFavori: false };
+      }
+      
+      const favoriStatus = await favorisService.isFavori(user.uid, id);
+      
+      return {
+        ...annonce,
+        isFavori: favoriStatus
+      };
+    } catch (err) {
+      console.error('Erreur lors de la récupération de l\'annonce:', err);
+      setError('Une erreur est survenue lors de la récupération de l\'annonce');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     error,
@@ -279,6 +441,13 @@ export const useAnnonce = () => {
     getRecentAnnonces,
     getAllAnnonces,
     getAnnoncesByCategory,
-    getAnnonceById
+    getAnnonceById,
+    // Nouvelles fonctions pour les favoris
+    addToFavoris,
+    removeFromFavoris,
+    isFavori,
+    getFavorisAnnonces,
+    getAllAnnoncesWithFavoriStatus,
+    getAnnonceByIdWithFavoriStatus
   };
 };

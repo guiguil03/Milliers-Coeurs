@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Reservation, ReservationStatut, NouvelleReservation } from '../models/Reservation';
-import { getAnnonceById, updateAnnonce } from './annonceService';
+import { annonceService } from './annonceFirebaseService';
 
 // Convertir un document Firestore en objet Reservation
 const convertReservationDoc = (doc: QueryDocumentSnapshot<DocumentData>): Reservation => {
@@ -47,7 +47,7 @@ export const reservationService = {
   createReservation: async (reservation: NouvelleReservation): Promise<string> => {
     try {
       // Vérifier si l'annonce existe et est disponible
-      const annonce = await getAnnonceById(reservation.annonceId);
+      const annonce = await annonceService.getAnnonceById(reservation.annonceId);
       if (!annonce) {
         throw new Error("Cette annonce n'existe plus");
       }
@@ -84,9 +84,9 @@ export const reservationService = {
       });
       
       // Mettre à jour le nombre de places disponibles dans l'annonce si nécessaire
-      if (annonce.nombre_places !== undefined && annonce.nombre_places > 0) {
-        await updateAnnonce(reservation.annonceId, {
-          nombre_places: annonce.nombre_places - 1
+      if (annonce.places !== undefined && annonce.places > 0) {
+        await annonceService.updateAnnonce(reservation.annonceId, {
+          places: annonce.places - 1
         });
       }
       
@@ -311,10 +311,10 @@ export const reservationService = {
       if (statut === ReservationStatut.Annulee || statut === ReservationStatut.Refusee) {
         const reservation = await reservationService.getReservationById(id);
         if (reservation && reservation.annonceId) {
-          const annonce = await getAnnonceById(reservation.annonceId);
-          if (annonce && annonce.nombre_places !== undefined) {
-            await updateAnnonce(reservation.annonceId, {
-              nombre_places: annonce.nombre_places + 1
+          const annonce = await annonceService.getAnnonceById(reservation.annonceId);
+          if (annonce && annonce.places !== undefined) {
+            await annonceService.updateAnnonce(reservation.annonceId, {
+              places: annonce.places + 1
             });
           }
         }
