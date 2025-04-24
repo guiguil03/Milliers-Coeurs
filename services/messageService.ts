@@ -361,10 +361,8 @@ export const getUserNameById = async (userId: string): Promise<string> => {
     return getCurrentUserName();
   }
   
-  // Sinon, chercher l'utilisateur dans la base de données
   try {
-    // Note: Dans une application réelle, vous auriez une collection d'utilisateurs
-    // Ici, nous retournons simplement un nom générique
+   
     return 'Contact'; // À remplacer par une recherche dans la base de données
   } catch (error) {
     console.error("Erreur lors de la récupération du nom d'utilisateur:", error);
