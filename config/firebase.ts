@@ -6,6 +6,7 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAnalytics, Analytics } from 'firebase/analytics';
 import { getDatabase, Database } from 'firebase/database';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Obtenir les variables d'environnement d'Expo
 const expoConstants = Constants.expoConfig?.extra || {};
@@ -13,12 +14,19 @@ const expoConstants = Constants.expoConfig?.extra || {};
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDIJyjyh2j9pUzgRhUZLeRlzj23FDHQBiw",
+
   authDomain: "millecoeurs-ba7a7.firebaseapp.com",
+
   databaseURL: "https://millecoeurs-ba7a7-default-rtdb.firebaseio.com",
+
   projectId: "millecoeurs-ba7a7",
+
   storageBucket: "millecoeurs-ba7a7.firebasestorage.app",
+
   messagingSenderId: "397224772460",
+
   appId: "1:397224772460:web:b994c9511b12b9329a2949",
+
   measurementId: "G-3BY2NJZWC4"
 };
 
@@ -41,16 +49,21 @@ if (!isValidConfig(firebaseConfig)) {
 console.log("Initialisation de Firebase avec la configuration:", JSON.stringify(firebaseConfig, null, 2));
 
 // Initialize Firebase
-let app: FirebaseApp, 
-    auth: Auth, 
-    db: Firestore, 
-    storage: FirebaseStorage, 
-    analytics: Analytics | undefined, 
-    rtdb: Database;
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+let analytics: Analytics | undefined;
+let rtdb: Database;
 
 try {
+  // Initialiser l'application Firebase
   app = initializeApp(firebaseConfig);
+  
+  // Initialiser l'authentification
   auth = getAuth(app);
+  
+  // Initialiser les autres services Firebase
   db = getFirestore(app);
   storage = getStorage(app);
   rtdb = getDatabase(app);
@@ -69,4 +82,5 @@ try {
   throw error;
 }
 
+// Exporter les instances
 export { app, auth, db, storage, analytics, rtdb };
