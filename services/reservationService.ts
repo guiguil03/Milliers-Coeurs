@@ -46,8 +46,12 @@ export const reservationService = {
    */
   createReservation: async (reservation: NouvelleReservation): Promise<string> => {
     try {
+      console.log('🔵 [RESERVATION_SERVICE] Début createReservation avec:', reservation);
+      
       // Vérifier si l'annonce existe et est disponible
       const annonce = await annonceService.getAnnonceById(reservation.annonceId);
+      console.log('🔵 [RESERVATION_SERVICE] Annonce récupérée:', annonce ? 'trouvée' : 'non trouvée');
+      
       if (!annonce) {
         throw new Error("Cette annonce n'existe plus");
       }
@@ -57,6 +61,7 @@ export const reservationService = {
         reservation.benevoleId, 
         reservation.annonceId
       );
+      console.log('🔵 [RESERVATION_SERVICE] A déjà une réservation:', hasExisting);
       
       if (hasExisting) {
         throw new Error("Vous avez déjà réservé cette annonce");
@@ -77,22 +82,27 @@ export const reservationService = {
         statut: ReservationStatut.EnAttente
       };
       
+      console.log('🔵 [RESERVATION_SERVICE] Objet réservation à créer:', newReservation);
+      
       // Ajouter la réservation à Firestore
       const reservationRef = await addDoc(collection(db, 'reservations'), {
         ...newReservation,
         dateReservation: Timestamp.fromDate(newReservation.dateReservation)
       });
       
+      console.log('✅ [RESERVATION_SERVICE] Réservation créée avec ID:', reservationRef.id);
+      
       // Mettre à jour le nombre de places disponibles dans l'annonce si nécessaire
       if (annonce.places !== undefined && annonce.places > 0) {
         await annonceService.updateAnnonce(reservation.annonceId, {
           places: annonce.places - 1
         });
+        console.log('🔵 [RESERVATION_SERVICE] Places mises à jour');
       }
       
       return reservationRef.id;
     } catch (error) {
-      console.error("Erreur lors de la création de la réservation :", error);
+      console.error("🔴 [RESERVATION_SERVICE] Erreur lors de la création de la réservation :", error);
       throw error;
     }
   },
@@ -298,6 +308,8 @@ export const reservationService = {
    */
   updateReservationStatus: async (id: string, statut: ReservationStatut, commentaire?: string): Promise<void> => {
     try {
+      console.log('🔵 [RESERVATION_SERVICE] Mise à jour du statut de la réservation:', id, 'vers', statut);
+      
       const reservationRef = doc(db, 'reservations', id);
       const updateData: Partial<Reservation> = { statut };
       
@@ -306,21 +318,25 @@ export const reservationService = {
       }
       
       await updateDoc(reservationRef, updateData);
+      console.log('✅ [RESERVATION_SERVICE] Statut de la réservation mis à jour');
       
       // Si la réservation est annulée ou refusée, mettre à jour le nombre de places disponibles
       if (statut === ReservationStatut.Annulee || statut === ReservationStatut.Refusee) {
+        console.log('🔵 [RESERVATION_SERVICE] Réservation annulée/refusée, remise de la place disponible');
         const reservation = await reservationService.getReservationById(id);
         if (reservation && reservation.annonceId) {
           const annonce = await annonceService.getAnnonceById(reservation.annonceId);
+          console.log('🔵 [RESERVATION_SERVICE] Annonce récupérée, places actuelles:', annonce?.places);
           if (annonce && annonce.places !== undefined) {
             await annonceService.updateAnnonce(reservation.annonceId, {
               places: annonce.places + 1
             });
+            console.log('✅ [RESERVATION_SERVICE] Place remise à disposition, nouvelles places:', annonce.places + 1);
           }
         }
       }
     } catch (error) {
-      console.error("Erreur lors de la mise à jour du statut de la réservation :", error);
+      console.error("🔴 [RESERVATION_SERVICE] Erreur lors de la mise à jour du statut de la réservation :", error);
       throw error;
     }
   },

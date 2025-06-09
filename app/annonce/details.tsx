@@ -312,7 +312,7 @@ export default function AnnonceDetailsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButtonIcon}
@@ -331,6 +331,8 @@ export default function AnnonceDetailsScreen() {
           </TouchableOpacity>
         )}
       </View>
+      
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 
       <View style={styles.orgSection}>
         <View style={styles.orgHeader}>
@@ -490,8 +492,9 @@ export default function AnnonceDetailsScreen() {
             </>
           )}
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -499,6 +502,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   centeredContainer: {
     flex: 1,
@@ -610,6 +619,8 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff',
     justifyContent: 'space-between',
+    marginTop: 10,
+    marginBottom: 0,
   },
   actionButton: {
     flex: 1,

@@ -72,12 +72,21 @@ export default function ExplorerPage() {
           headerShown: true,
           title: 'Explorer les missions',
           headerStyle: {
-            backgroundColor: '#FFF',
+            backgroundColor: '#fff',
           },
           headerTintColor: '#E0485A',
           headerTitleStyle: {
             fontWeight: 'bold',
           },
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => router.push('/')}
+              style={{ paddingLeft: 16 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#E0485A" />
+            </TouchableOpacity>
+          ),
+          headerBackTitleVisible: false,
         }} 
       />
       
