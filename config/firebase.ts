@@ -11,23 +11,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Obtenir les variables d'environnement d'Expo
 const expoConstants = Constants.expoConfig?.extra || {};
 
-// Firebase configuration
+// Configuration Firebase avec variables d'environnement Expo
 const firebaseConfig = {
-  apiKey: "AIzaSyDIJyjyh2j9pUzgRhUZLeRlzj23FDHQBiw",
-
-  authDomain: "millecoeurs-ba7a7.firebaseapp.com",
-
-  databaseURL: "https://millecoeurs-ba7a7-default-rtdb.firebaseio.com",
-
-  projectId: "millecoeurs-ba7a7",
-
-  storageBucket: "millecoeurs-ba7a7.firebasestorage.app",
-
-  messagingSenderId: "397224772460",
-
-  appId: "1:397224772460:web:b994c9511b12b9329a2949",
-
-  measurementId: "G-3BY2NJZWC4"
+  apiKey: process.env.EXPO_PUBLIC_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_AUTH_DOMAIN,
+  databaseURL: process.env.EXPO_PUBLIC_DATABASE_URL,
+  projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_MEASUREMENT_ID
 };
 
 // Vérifier si la configuration est valide

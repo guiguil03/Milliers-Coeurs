@@ -58,7 +58,7 @@ database.sqlite3
 *.sqlite-wal
 *.sqlite-shm
 .env
-.env.*
+.env.local
 
 # Local Netlify folder
 .netlify
