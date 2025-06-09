@@ -71,8 +71,11 @@ const MesReservationsScreen: React.FC = () => {
         })
       );
       
+      // Filtrer uniquement les réservations avec des annonces valides
+      const validReservations = reservationsWithAnnonces.filter(reservation => reservation.annonce);
+      
       // Trier par date de réservation (plus récent en premier)
-      const sortedReservations = reservationsWithAnnonces.sort((a, b) => {
+      const sortedReservations = validReservations.sort((a, b) => {
         // Vérifier si les dates sont valides
         if (!a.dateReservation) return 1;
         if (!b.dateReservation) return -1;
@@ -96,45 +99,42 @@ const MesReservationsScreen: React.FC = () => {
     loadReservations();
   };
 
-  const handleCancelReservation = (reservation: Reservation) => {
-    if (!reservation.id) return;
+  const handleCancelReservation = async (reservation: Reservation) => {
+    if (!reservation.id) {
+      console.log('🔴 [CANCEL] Pas d\'ID de réservation');
+      return;
+    }
     
-    Alert.alert(
-      "Annuler la réservation",
-      "Êtes-vous sûr de vouloir annuler cette réservation ?",
-      [
-        { text: "Non", style: "cancel" },
-        { 
-          text: "Oui", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              
-              await reservationService.updateReservationStatus(
-                reservation.id!, 
-                ReservationStatut.Annulee
-              );
-              
-              // Recharger les réservations
-              loadReservations();
-              
-              Alert.alert(
-                "Réservation annulée",
-                "Votre réservation a été annulée avec succès."
-              );
-            } catch (error) {
-              console.error('Erreur lors de l\'annulation de la réservation:', error);
-              Alert.alert(
-                "Erreur",
-                "Une erreur est survenue lors de l'annulation. Veuillez réessayer."
-              );
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    console.log('🔵 [CANCEL] Annulation directe de la réservation:', reservation.id);
+    
+    // Annulation directe sans confirmation pour éviter le problème de boîte de dialogue
+    try {
+      console.log('🟡 [CANCEL] Début de l\'annulation');
+      setLoading(true);
+      
+      await reservationService.updateReservationStatus(
+        reservation.id!, 
+        ReservationStatut.Annulee
+      );
+      
+      console.log('✅ [CANCEL] Réservation annulée avec succès');
+      
+      // Recharger les réservations
+      await loadReservations();
+      
+      Alert.alert(
+        "Réservation annulée",
+        "Votre réservation a été annulée avec succès."
+      );
+    } catch (error) {
+      console.error('🔴 [CANCEL] Erreur lors de l\'annulation de la réservation:', error);
+      Alert.alert(
+        "Erreur",
+        "Une erreur est survenue lors de l'annulation. Veuillez réessayer."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const navigateToAnnonceDetail = (annonceId: string) => {
@@ -178,18 +178,23 @@ const MesReservationsScreen: React.FC = () => {
   };
 
   const renderReservationItem = ({ item }: { item: Reservation & { annonce?: Annonce } }) => {
+    // Ne pas afficher la réservation si l'annonce n'existe pas
+    if (!item.annonce) {
+      return null;
+    }
+
     return (
       <View style={styles.reservationCard}>
         <TouchableOpacity
           style={styles.reservationHeader}
-          onPress={() => item.annonceId && navigateToAnnonceDetail(item.annonceId)}
+          onPress={() => navigateToAnnonceDetail(item.annonceId)}
         >
           <View style={styles.reservationInfo}>
             <Text style={styles.reservationTitle}>
-              {item.annonce?.titre || 'Annonce indisponible'}
+              {item.annonce.titre}
             </Text>
             <Text style={styles.reservationOrganisation}>
-              {item.annonce?.organisation || 'Organisation inconnue'}
+              {item.annonce.organisation}
             </Text>
             <Text style={styles.reservationDate}>
               Réservé le {item.dateReservation.toLocaleDateString('fr-FR')}

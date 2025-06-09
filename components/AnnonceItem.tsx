@@ -114,10 +114,15 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
 
   // Fonction pour gérer la réservation
   const handleReservation = async () => {
-    // Vérifier si l'utilisateur est connecté
+    console.log('🔵 [DEBUG] handleReservation appelée');
+    console.log('🔵 [DEBUG] User:', user ? 'connecté' : 'non connecté');
+    console.log('🔵 [DEBUG] AnnonceId:', annonceId);
+    console.log('🔵 [DEBUG] IsOwner:', isOwner);
+    
     if (!user) {
+      console.log('🔴 [DEBUG] Utilisateur non connecté');
       Alert.alert(
-        "Connexion requise", 
+        "Connexion requise",
         "Vous devez vous connecter pour réserver une place.",
         [
           { text: "Annuler", style: "cancel" },
@@ -127,52 +132,62 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       return;
     }
 
-    // Vérifier si l'utilisateur est le propriétaire de l'annonce
     if (isOwner) {
+      console.log('🔴 [DEBUG] L\'utilisateur est propriétaire de l\'annonce');
       Alert.alert(
-        "Action non disponible", 
+        "Action non disponible",
         "Vous ne pouvez pas réserver votre propre annonce."
       );
       return;
     }
 
     try {
+      console.log('🟡 [DEBUG] Début du processus de réservation');
       setIsReserving(true);
+      console.log('[Réservation] Vérification si déjà réservé...');
       
-      // Vérifier si l'utilisateur a déjà réservé cette annonce
       const hasReserved = await reservationService.hasBenevoleReservedAnnonce(annonceId || '', user.uid);
+      console.log('🔵 [DEBUG] A déjà réservé:', hasReserved);
       
       if (hasReserved) {
+        console.log('🔴 [DEBUG] L\'utilisateur a déjà réservé');
         Alert.alert(
-          "Déjà réservé", 
+          "Déjà réservé",
           "Vous avez déjà réservé une place pour cette mission. Vous pouvez consulter vos réservations dans votre profil."
         );
         return;
       }
-
-      // Confirmer la réservation
+      
+      console.log('🟢 [DEBUG] Affichage de la confirmation');
+      // Confirmation utilisateur
       Alert.alert(
         "Réserver une place",
         "Voulez-vous réserver une place pour cette mission ?",
         [
-          { text: "Annuler", style: "cancel" },
           { 
-            text: "Confirmer", 
+            text: "Annuler", 
+            style: "cancel", 
+            onPress: () => console.log('🔴 [DEBUG] Réservation annulée par l\'utilisateur') 
+          },
+          {
+            text: "Confirmer",
             onPress: async () => {
               try {
+                console.log('🟢 [DEBUG] Confirmation par l\'utilisateur');
+                console.log('[Réservation] Création de la réservation...');
                 await reservationService.createReservation({
                   annonceId: annonceId || '',
                   benevoleId: user.uid,
                   benevoleName: user.displayName || undefined,
                   benevoleEmail: user.email || undefined
                 });
-                
+                console.log('✅ [DEBUG] Réservation créée avec succès');
                 Alert.alert(
-                  "Réservation effectuée", 
+                  "Réservation effectuée",
                   "Votre demande de réservation a été enregistrée. Vous pouvez consulter son statut dans votre profil."
                 );
               } catch (error) {
-                console.error("Erreur lors de la réservation:", error);
+                console.error("🔴 [DEBUG] Erreur lors de la réservation:", error);
                 Alert.alert("Erreur", "Impossible de créer la réservation. Veuillez réessayer.");
               }
             }
@@ -180,9 +195,10 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
         ]
       );
     } catch (error) {
-      console.error("Erreur lors de la vérification de réservation:", error);
+      console.error("🔴 [DEBUG] Erreur lors de la vérification de réservation:", error);
       Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
     } finally {
+      console.log('🔵 [DEBUG] setIsReserving(false)');
       setIsReserving(false);
     }
   };

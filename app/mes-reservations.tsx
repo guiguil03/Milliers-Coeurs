@@ -3,6 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import MesReservationsScreen from '../screens/MesReservationsScreen';
 import { useAuthContext } from '../contexts/AuthContext';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function MesReservationsPage() {
   const { user } = useAuthContext();
@@ -32,6 +33,15 @@ export default function MesReservationsPage() {
             headerTitleStyle: {
               fontWeight: 'bold',
             },
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => router.push('/')}
+                style={{ paddingLeft: 16 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E0485A" />
+              </TouchableOpacity>
+            ),
+            headerBackTitleVisible: false,
           }} 
         />
         <View style={styles.notLoggedInContainer}>
@@ -61,6 +71,15 @@ export default function MesReservationsPage() {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => router.push('/')}
+              style={{ paddingLeft: 16 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#E0485A" />
+            </TouchableOpacity>
+          ),
+          headerBackTitleVisible: false,
         }} 
       />
       <MesReservationsScreen />

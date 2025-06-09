@@ -42,38 +42,21 @@ if (!isValidConfig(firebaseConfig)) {
 console.log("Initialisation de Firebase avec la configuration:", JSON.stringify(firebaseConfig, null, 2));
 
 // Initialize Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let storage: FirebaseStorage;
-let analytics: Analytics | undefined;
-let rtdb: Database;
+const app: FirebaseApp = initializeApp(firebaseConfig);
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
+const rtdb: Database = getDatabase(app);
 
+let analytics: Analytics | undefined;
 try {
-  // Initialiser l'application Firebase
-  app = initializeApp(firebaseConfig);
-  
-  // Initialiser l'authentification
-  auth = getAuth(app);
-  
-  // Initialiser les autres services Firebase
-  db = getFirestore(app);
-  storage = getStorage(app);
-  rtdb = getDatabase(app);
-  
-  // Initialiser Analytics uniquement sur les plateformes qui le supportent
-  try {
-    analytics = getAnalytics(app);
-    console.log("✅ Firebase Analytics initialisé avec succès!");
-  } catch (analyticsError) {
-    console.log("ℹ️ Firebase Analytics non initialisé - peut ne pas être supporté sur cette plateforme");
-  }
-  
-  console.log("✅ Firebase initialisé avec succès!");
-} catch (error) {
-  console.error("❌ ERREUR lors de l'initialisation de Firebase:", error);
-  throw error;
+  analytics = getAnalytics(app);
+  console.log("✅ Firebase Analytics initialisé avec succès!");
+} catch (e) {
+  console.log("ℹ️ Firebase Analytics non initialisé - peut ne pas être supporté sur cette plateforme");
 }
+
+console.log("✅ Firebase initialisé avec succès!");
 
 // Exporter les instances
 export { app, auth, db, storage, analytics, rtdb };

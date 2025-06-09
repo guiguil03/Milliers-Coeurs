@@ -389,7 +389,29 @@ export default function ProfilePage() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <>
+      <Stack.Screen 
+        options={{ 
+          title: 'Mon Profil',
+          headerStyle: {
+            backgroundColor: '#fff',
+          },
+          headerTintColor: '#E0485A',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => router.push('/')}
+              style={{ paddingLeft: 16 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#E0485A" />
+            </TouchableOpacity>
+          ),
+          headerBackTitleVisible: false,
+        }} 
+      />
+      <ScrollView style={styles.container}>
       {loading ? (
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color="#E0485A" />
@@ -774,7 +796,8 @@ export default function ProfilePage() {
           </TouchableOpacity>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 

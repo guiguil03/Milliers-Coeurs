@@ -1,6 +1,6 @@
 import { StyleSheet, ScrollView, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import { Link, useRouter } from 'expo-router';
+import { Link, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import AnnonceItem from '../components/AnnonceItem';
@@ -32,7 +32,23 @@ export default function HomePage() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <>
+      <Stack.Screen 
+        options={{ 
+          title: 'Accueil',
+          headerStyle: {
+            backgroundColor: '#fff',
+          },
+          headerTintColor: '#E0485A',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => null,
+          headerBackTitleVisible: false,
+          gestureEnabled: false,
+        }} 
+      />
+      <ScrollView style={styles.container}>
       <View style={styles.titleContainer}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Annonces de bénévolat</Text>
@@ -92,7 +108,8 @@ export default function HomePage() {
           ))}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 

@@ -39,7 +39,20 @@ export default function RootLayout() {
         <SafeAreaView style={styles.container}>
           <Header />
           <View style={styles.content}>
-            <Stack />
+            <Stack 
+              screenOptions={{ 
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: '#fff',
+                },
+                headerTintColor: '#E0485A',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                },
+                headerShadowVisible: false,
+              }} 
+            />
           </View>
           <Footer />
         </SafeAreaView>
