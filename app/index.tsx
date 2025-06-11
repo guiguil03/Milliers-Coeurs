@@ -1,10 +1,13 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { Link, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { annonceService, Annonce } from '../services/annonceFirebaseService';
 import AnnonceItem from '../components/AnnonceItem';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { router } from 'expo-router';
+import { reservationService } from '../services/reservationService';
 
 export default function HomePage() {
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
@@ -12,6 +15,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { user, userType } = useAuthContext();
+  const { user: authUser } = useAuth();
+  const [isTestingReservation, setIsTestingReservation] = useState(false);
 
   useEffect(() => {
     loadRecentAnnonces();
@@ -31,6 +36,58 @@ export default function HomePage() {
     }
   };
 
+  const testReservation = async () => {
+    if (!authUser) {
+      Alert.alert("Erreur", "Vous devez être connecté pour tester les réservations");
+      return;
+    }
+
+    if (annonces.length === 0) {
+      Alert.alert("Erreur", "Aucune annonce disponible pour le test");
+      return;
+    }
+
+    try {
+      setIsTestingReservation(true);
+      
+      // Prendre la première annonce disponible
+      const annonceTest = annonces[0];
+      
+      console.log("🧪 Test réservation pour annonce:", annonceTest.id);
+      
+      const reservationData = {
+        annonceId: annonceTest.id!,
+        benevoleId: authUser.uid,
+        benevoleName: authUser.displayName || authUser.email || 'Testeur',
+        benevoleEmail: authUser.email || '',
+        message: `Test de réservation - ${new Date().toLocaleString()}`
+      };
+      
+      const reservationId = await reservationService.createReservation(reservationData);
+      
+      Alert.alert(
+        "🧪 Test Réussi !",
+        `Réservation de test créée avec succès !\n\nID: ${reservationId}\nPour: ${annonceTest.titre}\n\nAllez voir l'onglet Réservations !`,
+        [
+          { 
+            text: "Voir Réservations", 
+            onPress: () => router.push("/(tabs)/reservations")
+          },
+          { 
+            text: "OK", 
+            style: "cancel" 
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error("❌ Erreur test réservation:", error);
+      Alert.alert("Erreur", `Echec du test: ${error}`);
+    } finally {
+      setIsTestingReservation(false);
+    }
+  };
+
   return (
     <>
       <Stack.Screen 
@@ -44,7 +101,6 @@ export default function HomePage() {
             fontWeight: 'bold',
           },
           headerLeft: () => null,
-          headerBackTitleVisible: false,
           gestureEnabled: false,
         }} 
       />
@@ -66,6 +122,45 @@ export default function HomePage() {
             <Text style={styles.createButtonText}>Créer une annonce</Text>
           </TouchableOpacity>
         </Link>
+        
+        {/* Bouton de test pour créer des annonces de démonstration */}
+        {authUser && (
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#4CAF50',
+              padding: 15,
+              borderRadius: 10,
+              marginTop: 10,
+              marginBottom: 10,
+              opacity: isTestingReservation ? 0.5 : 1,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3
+            }}
+            onPress={testReservation}
+            disabled={isTestingReservation}
+          >
+            <Text style={{ 
+              color: 'white', 
+              textAlign: 'center', 
+              fontWeight: 'bold',
+              fontSize: 16
+            }}>
+              {isTestingReservation ? '🧪 Test en cours...' : '🧪 TESTER LES RÉSERVATIONS'}
+            </Text>
+            <Text style={{ 
+              color: 'white', 
+              textAlign: 'center', 
+              fontSize: 12,
+              marginTop: 5,
+              opacity: 0.9
+            }}>
+              Créer une réservation de test et la voir dans l'onglet
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
       
       {loading ? (

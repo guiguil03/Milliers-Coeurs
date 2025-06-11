@@ -29,47 +29,122 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setAuthState(prev => ({ ...prev, loading: true }));
-      
-      if (user) {
-        try {
-          // Charger le profil de l'utilisateur
-          const userProfile = await getUserProfile(user.uid);
-          
-          // Récupérer le type d'utilisateur (association ou bénévole)
-          const userType = await userDataService.getUserType(user.uid);
-          
-          setAuthState({
-            user,
-            profile: userProfile,
-            userType,
-            loading: false,
-            error: null
+    let unsubscribe: (() => void) | null = null;
+    
+    // Attendre que Firebase soit prêt avant d'initialiser
+    const timer = setTimeout(() => {
+      try {
+        const firebaseAuth = auth;
+        
+        if (firebaseAuth) {
+          console.log("🔐 Initialisation du listener d'authentification...");
+          unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+            setAuthState(prev => ({ ...prev, loading: true }));
+            
+            if (user) {
+              try {
+                // Charger le profil de l'utilisateur
+                const userProfile = await getUserProfile(user.uid);
+                
+                // Récupérer le type d'utilisateur (association ou bénévole)
+                const userType = await userDataService.getUserType(user.uid);
+                
+                setAuthState({
+                  user,
+                  profile: userProfile,
+                  userType,
+                  loading: false,
+                  error: null
+                });
+              } catch (error) {
+                console.error("Erreur lors du chargement du profil :", error);
+                setAuthState({
+                  user,
+                  profile: null,
+                  userType: null,
+                  loading: false,
+                  error: "Erreur lors du chargement du profil"
+                });
+              }
+            } else {
+              setAuthState({
+                user: null,
+                profile: null,
+                userType: null,
+                loading: false,
+                error: null
+              });
+            }
           });
-        } catch (error) {
-          console.error("Erreur lors du chargement du profil :", error);
-          setAuthState({
-            user,
-            profile: null,
-            userType: null,
-            loading: false,
-            error: "Erreur lors du chargement du profil"
-          });
+        } else {
+          console.error("Firebase auth non disponible, réessai dans 1 seconde...");
+          // Réessayer dans 1 seconde
+          setTimeout(() => {
+            const retryAuth = auth;
+            if (retryAuth) {
+              console.log("🔐 Deuxième tentative d'initialisation d'auth...");
+              unsubscribe = onAuthStateChanged(retryAuth, async (user) => {
+                // ... même logique que ci-dessus
+                setAuthState(prev => ({ ...prev, loading: true }));
+                
+                if (user) {
+                  try {
+                    const userProfile = await getUserProfile(user.uid);
+                    const userType = await userDataService.getUserType(user.uid);
+                    
+                    setAuthState({
+                      user,
+                      profile: userProfile,
+                      userType,
+                      loading: false,
+                      error: null
+                    });
+                  } catch (error) {
+                    console.error("Erreur lors du chargement du profil :", error);
+                    setAuthState({
+                      user,
+                      profile: null,
+                      userType: null,
+                      loading: false,
+                      error: "Erreur lors du chargement du profil"
+                    });
+                  }
+                } else {
+                  setAuthState({
+                    user: null,
+                    profile: null,
+                    userType: null,
+                    loading: false,
+                    error: null
+                  });
+                }
+              });
+            } else {
+              setAuthState(prev => ({
+                ...prev,
+                loading: false,
+                error: "Erreur d'initialisation Firebase Auth"
+              }));
+            }
+          }, 1000);
         }
-      } else {
-        setAuthState({
-          user: null,
-          profile: null,
-          userType: null,
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation de l'auth listener:", error);
+        setAuthState(prev => ({
+          ...prev,
           loading: false,
-          error: null
-        });
+          error: "Erreur d'initialisation Firebase"
+        }));
       }
-    });
-
-    // Nettoyer l'abonnement quand le composant est démonté
-    return () => unsubscribe();
+    }, 1000); // Attendre 1 seconde avant d'initialiser
+    
+    // Nettoyer l'abonnement et le timer quand le composant est démonté
+    return () => {
+      clearTimeout(timer);
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Fonction de connexion

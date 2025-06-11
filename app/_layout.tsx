@@ -1,34 +1,30 @@
 import { Stack } from 'expo-router';
 import { ThemeProvider } from '@react-navigation/native';
 import { DefaultTheme } from '@react-navigation/native';
-import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator, Text } from 'react-native';
 import { AuthProvider } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { Footer } from '../components/Footer';
 import { useEffect, useState } from 'react';
-import { auth } from '../config/firebase';
 
 export default function RootLayout() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Attendre que Firebase soit initialisé
-        await new Promise(resolve => setTimeout(resolve, 100));
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Erreur lors de l\'initialisation de Firebase:', error);
-      }
-    };
+    // Attendre un délai simple pour permettre à Firebase de s'initialiser
+    const timer = setTimeout(() => {
+      console.log("✅ Application prête!");
+      setIsInitialized(true);
+    }, 1000);
 
-    checkAuth();
+    return () => clearTimeout(timer);
   }, []);
 
   if (!isInitialized) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#E0485A" />
+        <Text style={styles.loadingText}>Initialisation en cours...</Text>
       </View>
     );
   }
@@ -72,5 +68,10 @@ const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
 });

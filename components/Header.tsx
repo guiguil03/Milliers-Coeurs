@@ -18,6 +18,14 @@ const Header = () => {
   const { user, userType, logout } = useAuthContext();
   const router = useRouter();
 
+  // Fermer la modal automatiquement quand l'utilisateur se connecte
+  useEffect(() => {
+    if (user && modalVisible) {
+      console.log("[Header] Utilisateur connecté détecté, fermeture de la modal");
+      setModalVisible(false);
+    }
+  }, [user, modalVisible]);
+
   useEffect(() => {
     if (user) {
       // Récupérer et formater le nom d'affichage de l'utilisateur

@@ -6,7 +6,7 @@ import { annonceService, Annonce } from '../../services/annonceFirebaseService';
 import { getCategoryById, getCategoryByName } from '../../constants/categories';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { reservationService } from '../../services/reservationService';
-import { ReservationStatut } from '../../models/Reservation';
+import { ReservationStatut, Reservation } from '../../models/Reservation';
 import { useAnnonce, AnnonceWithFavori } from '../../hooks/useAnnonce';
 
 export default function AnnonceDetailsScreen() {
@@ -36,10 +36,12 @@ export default function AnnonceDetailsScreen() {
     const checkReservationStatus = async () => {
       if (user && id) {
         try {
-          const reserved = await reservationService.hasBenevoleReservedAnnonce(id as string, user.uid);
+          console.log('🔍 Vérification réservation pour:', user.uid, 'annonce:', id);
+          const reserved = await reservationService.hasExistingReservation(user.uid, id as string);
+          console.log('🔍 Déjà réservé:', reserved);
           setHasReserved(reserved);
         } catch (error) {
-          console.error('Erreur lors de la vérification de la réservation:', error);
+          console.error('❌ Erreur vérification réservation:', error);
         }
       }
     };
@@ -113,8 +115,8 @@ export default function AnnonceDetailsScreen() {
               try {
                 setIsReservationLoading(true);
                 // Récupérer la réservation existante
-                const reservations = await reservationService.getReservationsByBenevole(user.uid);
-                const reservation = reservations.find(r => r.annonceId === id);
+                const reservations = await reservationService.getReservationsByUser(user.uid);
+                const reservation = reservations.find((r: Reservation) => r.annonceId === id);
                 
                 if (reservation && reservation.id) {
                   // Annuler la réservation
@@ -146,21 +148,40 @@ export default function AnnonceDetailsScreen() {
           onPress: async () => {
             try {
               setIsReservationLoading(true);
-              await reservationService.createReservation({
+              // 🎯 CRÉATION DE LA RÉSERVATION
+              console.log("🎯 Création réservation pour annonce:", id);
+              
+              const reservationData = {
                 annonceId: id as string,
                 benevoleId: user.uid,
-                benevoleName: user.displayName || undefined,
-                benevoleEmail: user.email || undefined
-              });
+                benevoleName: user.displayName || user.email || 'Bénévole',
+                benevoleEmail: user.email || '',
+                message: `Réservation pour ${annonce?.titre || 'cette mission'}`
+              };
               
+              const reservationId = await reservationService.createReservation(reservationData);
+              
+              // ✅ CONFIRMATION
               setHasReserved(true);
+              
+              // 🎉 POPUP DE SUCCÈS
               Alert.alert(
-                "Réservation effectuée", 
-                "Votre demande de réservation a été enregistrée. Vous pouvez consulter son statut dans votre profil."
+                "🎉 Réservation Confirmée !",
+                `Votre réservation a été enregistrée avec succès !\n\n📋 Numéro : ${reservationId}\n\n✅ Statut : En attente de confirmation\n\n📱 Consultez l'onglet "Réservations" pour suivre votre demande.`,
+                [
+                  { 
+                    text: "Voir mes réservations", 
+                    onPress: () => router.push("/(tabs)/reservations")
+                  },
+                  { 
+                    text: "OK", 
+                    style: "cancel" 
+                  }
+                ]
               );
             } catch (error) {
-              console.error("Erreur lors de la réservation:", error);
-              Alert.alert("Erreur", "Impossible de créer la réservation. Veuillez réessayer.");
+              console.error("🔴 [DETAILS] Erreur lors de la réservation:", error);
+              Alert.alert("Erreur", `Impossible de créer la réservation.\n\nErreur: ${error}\n\nVérifiez la console pour plus de détails.`);
             } finally {
               setIsReservationLoading(false);
             }

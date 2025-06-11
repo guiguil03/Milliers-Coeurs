@@ -6,21 +6,20 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAnalytics, Analytics } from 'firebase/analytics';
 import { getDatabase, Database } from 'firebase/database';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Obtenir les variables d'environnement d'Expo
 const expoConstants = Constants.expoConfig?.extra || {};
 
-// Configuration Firebase avec variables d'environnement Expo
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: expoConstants.firebaseApiKey,
-  authDomain: expoConstants.firebaseAuthDomain,
-  databaseURL: expoConstants.firebaseDatabaseURL,
-  projectId: expoConstants.firebaseProjectId,
-  storageBucket: expoConstants.firebaseStorageBucket,
-  messagingSenderId: expoConstants.firebaseMessagingSenderId,
-  appId: expoConstants.firebaseAppId,
-  measurementId: expoConstants.firebaseMeasurementId
+  apiKey: "AIzaSyDIJyjyh2j9pUzgRhUZLeRlzj23FDHQBiw",
+  authDomain: "millecoeurs-ba7a7.firebaseapp.com",
+  databaseURL: "https://millecoeurs-ba7a7-default-rtdb.firebaseio.com",
+  projectId: "millecoeurs-ba7a7",
+  storageBucket: "millecoeurs-ba7a7.firebasestorage.app",
+  messagingSenderId: "397224772460",
+  appId: "1:397224772460:web:b994c9511b12b9329a2949",
+  measurementId: "G-3BY2NJZWC4"
 };
 
 // Vérifier si la configuration est valide
@@ -42,21 +41,32 @@ if (!isValidConfig(firebaseConfig)) {
 console.log("Initialisation de Firebase avec la configuration:", JSON.stringify(firebaseConfig, null, 2));
 
 // Initialize Firebase
-const app: FirebaseApp = initializeApp(firebaseConfig);
-const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app);
-const storage: FirebaseStorage = getStorage(app);
-const rtdb: Database = getDatabase(app);
+let app: FirebaseApp, 
+    auth: Auth, 
+    db: Firestore, 
+    storage: FirebaseStorage, 
+    analytics: Analytics | undefined, 
+    rtdb: Database;
 
-let analytics: Analytics | undefined;
 try {
-  analytics = getAnalytics(app);
-  console.log("✅ Firebase Analytics initialisé avec succès!");
-} catch (e) {
-  console.log("ℹ️ Firebase Analytics non initialisé - peut ne pas être supporté sur cette plateforme");
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  rtdb = getDatabase(app);
+  
+  // Initialiser Analytics uniquement sur les plateformes qui le supportent
+  try {
+    analytics = getAnalytics(app);
+    console.log("✅ Firebase Analytics initialisé avec succès!");
+  } catch (analyticsError) {
+    console.log("ℹ️ Firebase Analytics non initialisé - peut ne pas être supporté sur cette plateforme");
+  }
+  
+  console.log("✅ Firebase initialisé avec succès!");
+} catch (error) {
+  console.error("❌ ERREUR lors de l'initialisation de Firebase:", error);
+  throw error;
 }
 
-console.log("✅ Firebase initialisé avec succès!");
-
-// Exporter les instances
 export { app, auth, db, storage, analytics, rtdb };

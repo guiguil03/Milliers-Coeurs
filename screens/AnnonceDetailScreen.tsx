@@ -76,7 +76,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
     if (!user) return;
     
     try {
-      const hasReservation = await reservationService.hasBenevoleReservedAnnonce(annonceId, user.uid);
+      const hasReservation = await reservationService.hasExistingReservation(user.uid, annonceId);
       setHasReserved(hasReservation);
     } catch (error) {
       console.error('Erreur lors de la vérification du statut de réservation:', error);
@@ -161,7 +161,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
       setIsReservationLoading(true);
       
       // Vérifier si l'utilisateur a déjà une réservation pour cette annonce
-      const hasExistingReservation = await reservationService.hasBenevoleReservedAnnonce(annonceId, user.uid);
+      const hasExistingReservation = await reservationService.hasExistingReservation(user.uid, annonceId);
       if (hasExistingReservation) {
         Alert.alert(
           "Réservation impossible",

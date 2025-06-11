@@ -79,11 +79,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
         console.log("[AuthScreen] Inscription réussie");
       }
       
-      Alert.alert(
-        isLogin ? "Connexion réussie" : "Inscription réussie",
-        isLogin ? "Vous êtes maintenant connecté." : `Bienvenue ${firstName}! Votre compte a été créé avec succès.`,
-        [{ text: "OK", onPress: onClose }]
-      );
+      // Fermer la modal automatiquement après connexion/inscription réussie
+      console.log("[AuthScreen] Fermeture automatique de la modal après succès");
+      onClose();
     } catch (error: any) {
       console.error("[AuthScreen] Erreur d'authentification:", error);
       setErrorMessage(error.message || "Une erreur s'est produite");

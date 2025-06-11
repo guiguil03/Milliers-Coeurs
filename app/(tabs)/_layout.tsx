@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Header } from '../../components/Header';
+import Header from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
@@ -32,6 +32,15 @@ export default function TabLayout() {
               title: 'Explorer',
               tabBarIcon: ({ color, size }) => (
                 <Ionicons name="search-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="reservations"
+            options={{
+              title: 'Réservations',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="bookmark-outline" size={size} color={color} />
               ),
             }}
           />

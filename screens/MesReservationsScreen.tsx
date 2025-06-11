@@ -10,7 +10,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthContext } from '../contexts/AuthContext';
 import { reservationService } from '../services/reservationService';
@@ -43,51 +43,101 @@ const MesReservationsScreen: React.FC = () => {
     }
   }, [user]);
 
-  const loadReservations = async () => {
-    if (!user) return;
+  // Recharger les réservations quand l'écran devient visible
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user) {
+        console.log("📱 [RESERVATIONS_SCREEN] Écran focalisé - rechargement des données");
+        // Forcer le rechargement avec un petit délai pour s'assurer que les nouvelles données sont disponibles
+        setTimeout(() => {
+          loadReservations();
+        }, 500);
+      }
+    }, [user])
+  );
+
+    const loadReservations = async () => {
+    if (!user) {
+      console.log("❌ Pas d'utilisateur connecté");
+      return;
+    }
     
     try {
       setLoading(true);
       setError(null);
       
-      console.log("Chargement des réservations pour l'utilisateur:", user.uid);
+      console.log("📱 Chargement réservations pour:", user.uid);
       
-      // Récupérer les réservations de l'utilisateur
+      // Récupérer les réservations
       const userReservations = await reservationService.getReservationsByUser(user.uid);
+      console.log("📱 Réservations trouvées:", userReservations.length);
       
-      console.log("Réservations récupérées:", userReservations.length);
+      if (userReservations.length === 0) {
+        console.log("📱 Aucune réservation");
+        setReservations([]);
+        return;
+      }
       
-      // Pour chaque réservation, récupérer les détails de l'annonce associée
+      // Récupérer les détails des annonces
       const reservationsWithAnnonces = await Promise.all(
         userReservations.map(async (reservation) => {
           try {
-            console.log("Récupération de l'annonce:", reservation.annonceId);
             const annonce = await annonceService.getAnnonceById(reservation.annonceId);
-            return { ...reservation, annonce: annonce || undefined };
+            return { 
+              ...reservation, 
+              annonce: annonce || {
+                id: reservation.annonceId,
+                titre: 'Mission non disponible',
+                organisation: 'Organisation inconnue',
+                description: 'Détails non disponibles',
+                date: 'Date inconnue',
+                lieu: 'Lieu inconnu',
+                categorie: 'Catégorie inconnue',
+                important: '',
+                places: 0,
+                utilisateurId: '',
+                statut: 'active' as const,
+                dateCreation: new Date(),
+                isFavori: false
+              } as any
+            };
           } catch (error) {
-            console.error(`Erreur lors de la récupération de l'annonce ${reservation.annonceId}:`, error);
-            return { ...reservation, annonce: undefined };
+            console.error("❌ Erreur récupération annonce:", error);
+            return { 
+              ...reservation, 
+              annonce: {
+                id: reservation.annonceId,
+                titre: 'Erreur de chargement',
+                organisation: 'Erreur',
+                description: 'Impossible de charger les détails',
+                date: 'Date inconnue',
+                lieu: 'Lieu inconnu',
+                categorie: 'Catégorie inconnue',
+                important: '',
+                places: 0,
+                utilisateurId: '',
+                statut: 'active' as const,
+                dateCreation: new Date(),
+                isFavori: false
+              } as any
+            };
           }
         })
       );
       
-      // Filtrer uniquement les réservations avec des annonces valides
-      const validReservations = reservationsWithAnnonces.filter(reservation => reservation.annonce);
-      
-      // Trier par date de réservation (plus récent en premier)
-      const sortedReservations = validReservations.sort((a, b) => {
-        // Vérifier si les dates sont valides
+      // Trier par date (plus récent en premier)
+      const sortedReservations = reservationsWithAnnonces.sort((a, b) => {
         if (!a.dateReservation) return 1;
         if (!b.dateReservation) return -1;
         return b.dateReservation.getTime() - a.dateReservation.getTime();
       });
       
-      console.log("Réservations triées et prêtes à afficher:", sortedReservations.length);
-      
+      console.log("✅ Réservations prêtes:", sortedReservations.length);
       setReservations(sortedReservations);
+      
     } catch (error) {
-      console.error('Erreur lors du chargement des réservations:', error);
-      setError('Impossible de charger vos réservations. Veuillez réessayer.');
+      console.error("❌ Erreur chargement réservations:", error);
+      setError('Erreur lors du chargement. Veuillez réessayer.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -292,49 +342,7 @@ const MesReservationsScreen: React.FC = () => {
             Parcourez les annonces et réservez des missions de bénévolat
           </Text>
           
-          {/* Bouton de test en mode développement uniquement */}
-          {__DEV__ && (
-            <TouchableOpacity 
-              style={styles.testButton}
-              onPress={async () => {
-                try {
-                  setLoading(true);
-                  
-                  if (!user) {
-                    Alert.alert("Erreur", "Vous devez être connecté pour créer une réservation de test");
-                    setLoading(false);
-                    return;
-                  }
-                  
-                  // Récupérer la première annonce disponible
-                  const annonceSnapshot = await reservationService.getTestAnnonce();
-                  if (!annonceSnapshot) {
-                    Alert.alert("Erreur", "Aucune annonce disponible pour le test");
-                    setLoading(false);
-                    return;
-                  }
-                  
-                  // Créer une réservation de test
-                  await reservationService.createReservation({
-                    annonceId: annonceSnapshot.id,
-                    benevoleId: user.uid,
-                    benevoleName: user.displayName || 'Bénévole Test',
-                    benevoleEmail: user.email || 'test@example.com',
-                    message: 'Ceci est une réservation de test'
-                  });
-                  
-                  Alert.alert("Succès", "Une réservation de test a été créée");
-                  loadReservations();
-                } catch (error) {
-                  console.error("Erreur lors de la création de la réservation de test:", error);
-                  Alert.alert("Erreur", "Impossible de créer une réservation de test");
-                  setLoading(false);
-                }
-              }}
-            >
-              <Text style={styles.testButtonText}>Créer une réservation de test</Text>
-            </TouchableOpacity>
-          )}
+
         </View>
       ) : (
         <FlatList
@@ -512,17 +520,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 32,
   },
-  testButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  testButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
+
 });
 
 export default MesReservationsScreen;

@@ -146,7 +146,7 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       setIsReserving(true);
       console.log('[Réservation] Vérification si déjà réservé...');
       
-      const hasReserved = await reservationService.hasBenevoleReservedAnnonce(annonceId || '', user.uid);
+      const hasReserved = await reservationService.hasExistingReservation(user.uid, annonceId || '');
       console.log('🔵 [DEBUG] A déjà réservé:', hasReserved);
       
       if (hasReserved) {
@@ -159,36 +159,63 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       }
       
       console.log('🟢 [DEBUG] Affichage de la confirmation');
+      
+      // Réinitialiser l'état avant d'afficher la popup
+      setIsReserving(false);
+      
       // Confirmation utilisateur
       Alert.alert(
-        "Réserver une place",
+        "🎯 Réserver une place",
         "Voulez-vous réserver une place pour cette mission ?",
         [
           { 
-            text: "Annuler", 
+            text: "❌ Annuler", 
             style: "cancel", 
             onPress: () => console.log('🔴 [DEBUG] Réservation annulée par l\'utilisateur') 
           },
           {
-            text: "Confirmer",
+            text: "✅ Confirmer",
             onPress: async () => {
               try {
                 console.log('🟢 [DEBUG] Confirmation par l\'utilisateur');
                 console.log('[Réservation] Création de la réservation...');
-                await reservationService.createReservation({
+                
+                const reservationData = {
                   annonceId: annonceId || '',
                   benevoleId: user.uid,
-                  benevoleName: user.displayName || undefined,
-                  benevoleEmail: user.email || undefined
-                });
-                console.log('✅ [DEBUG] Réservation créée avec succès');
+                  benevoleName: user.displayName || user.email || 'Bénévole',
+                  benevoleEmail: user.email || '',
+                  message: 'Réservation depuis la liste des annonces'
+                };
+                
+                const reservationId = await reservationService.createReservation(reservationData);
+                console.log('✅ [DEBUG] Réservation créée avec succès, ID:', reservationId);
+                
                 Alert.alert(
-                  "Réservation effectuée",
-                  "Votre demande de réservation a été enregistrée. Vous pouvez consulter son statut dans votre profil."
+                  "🎉 Réservation Confirmée !",
+                  `Votre réservation a été enregistrée avec succès !\n\n📋 Numéro : ${reservationId}\n\n✅ Statut : En attente de confirmation\n\nConsultez l'onglet "Réservations" pour suivre votre demande.`,
+                  [
+                    { 
+                      text: "📱 Voir mes réservations", 
+                      onPress: () => {
+                        // Navigation vers l'onglet réservations
+                        if (router) {
+                          router.push("/(tabs)/reservations");
+                        }
+                      }
+                    },
+                    { 
+                      text: "✅ OK", 
+                      style: "cancel" 
+                    }
+                  ]
                 );
               } catch (error) {
                 console.error("🔴 [DEBUG] Erreur lors de la réservation:", error);
-                Alert.alert("Erreur", "Impossible de créer la réservation. Veuillez réessayer.");
+                Alert.alert(
+                  "❌ Erreur", 
+                  `Impossible de créer la réservation.\n\nErreur: ${error}\n\nVeuillez réessayer.`
+                );
               }
             }
           }
@@ -196,9 +223,7 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       );
     } catch (error) {
       console.error("🔴 [DEBUG] Erreur lors de la vérification de réservation:", error);
-      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
-    } finally {
-      console.log('🔵 [DEBUG] setIsReserving(false)');
+      Alert.alert("❌ Erreur", "Une erreur est survenue. Veuillez réessayer.");
       setIsReserving(false);
     }
   };
