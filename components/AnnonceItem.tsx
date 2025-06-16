@@ -114,118 +114,84 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
 
   // Fonction pour gérer la réservation
   const handleReservation = async () => {
-    console.log('🔵 [DEBUG] handleReservation appelée');
-    console.log('🔵 [DEBUG] User:', user ? 'connecté' : 'non connecté');
-    console.log('🔵 [DEBUG] AnnonceId:', annonceId);
-    console.log('🔵 [DEBUG] IsOwner:', isOwner);
-    
+    console.log('🚀 [RESERVATION] === RÉSERVATION DIRECTE ===');
+    console.log('🚀 [RESERVATION] User:', user?.uid, user?.email);
+    console.log('🚀 [RESERVATION] AnnonceId:', annonceId);
+
+    // Vérifications préliminaires
     if (!user) {
-      console.log('🔴 [DEBUG] Utilisateur non connecté');
-      Alert.alert(
-        "Connexion requise",
-        "Vous devez vous connecter pour réserver une place.",
-        [
-          { text: "Annuler", style: "cancel" },
-          { text: "Se connecter", onPress: () => router.push("/profile") }
-        ]
-      );
+      console.log('❌ [RESERVATION] Pas d\'utilisateur connecté');
       return;
     }
 
-    if (isOwner) {
-      console.log('🔴 [DEBUG] L\'utilisateur est propriétaire de l\'annonce');
-      Alert.alert(
-        "Action non disponible",
-        "Vous ne pouvez pas réserver votre propre annonce."
-      );
+    if (!annonceId) {
+      console.log('❌ [RESERVATION] Pas d\'ID d\'annonce');
       return;
     }
 
     try {
-      console.log('🟡 [DEBUG] Début du processus de réservation');
       setIsReserving(true);
-      console.log('[Réservation] Vérification si déjà réservé...');
-      
-      const hasReserved = await reservationService.hasExistingReservation(user.uid, annonceId || '');
-      console.log('🔵 [DEBUG] A déjà réservé:', hasReserved);
-      
-      if (hasReserved) {
-        console.log('🔴 [DEBUG] L\'utilisateur a déjà réservé');
-        Alert.alert(
-          "Déjà réservé",
-          "Vous avez déjà réservé une place pour cette mission. Vous pouvez consulter vos réservations dans votre profil."
-        );
+      console.log('🚀 [RESERVATION] Début création réservation...');
+
+      // Vérification anti-double réservation
+      console.log('🔍 [RESERVATION] Vérification réservation existante...');
+      const hasExisting = await reservationService.hasExistingReservation(user.uid, annonceId);
+      console.log('🔍 [RESERVATION] Résultat vérification:', hasExisting);
+
+      if (hasExisting) {
+        console.log('⚠️ [RESERVATION] Réservation déjà existante');
+        alert("Vous avez déjà réservé cette mission !");
+        setIsReserving(false);
         return;
       }
-      
-      console.log('🟢 [DEBUG] Affichage de la confirmation');
-      
-      // Réinitialiser l'état avant d'afficher la popup
-      setIsReserving(false);
-      
-      // Confirmation utilisateur
-      Alert.alert(
-        "🎯 Réserver une place",
-        "Voulez-vous réserver une place pour cette mission ?",
-        [
-          { 
-            text: "❌ Annuler", 
-            style: "cancel", 
-            onPress: () => console.log('🔴 [DEBUG] Réservation annulée par l\'utilisateur') 
-          },
-          {
-            text: "✅ Confirmer",
-            onPress: async () => {
-              try {
-                console.log('🟢 [DEBUG] Confirmation par l\'utilisateur');
-                console.log('[Réservation] Création de la réservation...');
-                
-                const reservationData = {
-                  annonceId: annonceId || '',
-                  benevoleId: user.uid,
-                  benevoleName: user.displayName || user.email || 'Bénévole',
-                  benevoleEmail: user.email || '',
-                  message: 'Réservation depuis la liste des annonces'
-                };
-                
-                const reservationId = await reservationService.createReservation(reservationData);
-                console.log('✅ [DEBUG] Réservation créée avec succès, ID:', reservationId);
-                
-                Alert.alert(
-                  "🎉 Réservation Confirmée !",
-                  `Votre réservation a été enregistrée avec succès !\n\n📋 Numéro : ${reservationId}\n\n✅ Statut : En attente de confirmation\n\nConsultez l'onglet "Réservations" pour suivre votre demande.`,
-                  [
-                    { 
-                      text: "📱 Voir mes réservations", 
-                      onPress: () => {
-                        // Navigation vers l'onglet réservations
-                        if (router) {
-                          router.push("/(tabs)/reservations");
-                        }
-                      }
-                    },
-                    { 
-                      text: "✅ OK", 
-                      style: "cancel" 
-                    }
-                  ]
-                );
-              } catch (error) {
-                console.error("🔴 [DEBUG] Erreur lors de la réservation:", error);
-                Alert.alert(
-                  "❌ Erreur", 
-                  `Impossible de créer la réservation.\n\nErreur: ${error}\n\nVeuillez réessayer.`
-                );
-              }
-            }
-          }
-        ]
-      );
+
+      // Données de réservation
+      const reservationData = {
+        annonceId: annonceId,
+        benevoleId: user.uid,
+        benevoleName: user.displayName || user.email || 'Bénévole',
+        benevoleEmail: user.email || '',
+        message: `Réservation pour: ${description || 'Mission'}`
+      };
+
+      console.log('📝 [RESERVATION] Données de réservation:', reservationData);
+
+      // Création de la réservation DIRECTE
+      console.log('🚀 [RESERVATION] Création réservation...');
+      const reservationId = await reservationService.createReservation(reservationData);
+      console.log('🎉 [RESERVATION] Réservation créée! ID:', reservationId);
+
+      // Vérification immédiate
+      console.log('🔍 [RESERVATION] Vérification immédiate...');
+      const verification = await reservationService.getReservationById(reservationId);
+      console.log('🔍 [RESERVATION] Vérification:', verification ? 'TROUVÉE' : 'NON TROUVÉE');
+
+      // Test récupération liste utilisateur
+      console.log('📋 [RESERVATION] Test récupération liste utilisateur...');
+      const userReservations = await reservationService.getReservationsByUser(user.uid);
+      console.log('📋 [RESERVATION] Réservations utilisateur:', userReservations.length);
+
+      // Succès - utiliser alert simple qui fonctionne partout
+      console.log('🎉 [RESERVATION] SUCCÈS - Affichage confirmation');
+      alert(`🎉 RÉSERVATION CONFIRMÉE !\n\nID: ${reservationId}\n\nAllez dans l'onglet "Réservations" pour voir votre réservation !`);
+
+      // Navigation automatique vers les réservations après 2 secondes
+      setTimeout(() => {
+        console.log('📱 [RESERVATION] Navigation automatique vers réservations');
+        if (router) {
+          router.push("/(tabs)/reservations");
+        }
+      }, 2000);
+
     } catch (error) {
-      console.error("🔴 [DEBUG] Erreur lors de la vérification de réservation:", error);
-      Alert.alert("❌ Erreur", "Une erreur est survenue. Veuillez réessayer.");
+      console.error('💥 [RESERVATION] Erreur:', error);
+      alert(`❌ Erreur lors de la réservation: ${error}`);
+      setIsReserving(false);
+    } finally {
       setIsReserving(false);
     }
+
+    console.log('🏁 [RESERVATION] === FIN RÉSERVATION ===');
   };
 
   // Fonction pour gérer la réponse

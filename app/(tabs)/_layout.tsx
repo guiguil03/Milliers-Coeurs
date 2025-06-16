@@ -1,6 +1,4 @@
 import { Tabs } from 'expo-router';
-import Header from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
@@ -9,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 export default function TabLayout() {
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
       <ThemedView style={styles.content}>
         <Tabs
           screenOptions={{
@@ -64,7 +61,6 @@ export default function TabLayout() {
           />
         </Tabs>
       </ThemedView>
-      <Footer />
     </SafeAreaView>
   );
 }

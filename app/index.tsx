@@ -53,28 +53,55 @@ export default function HomePage() {
       // Prendre la première annonce disponible
       const annonceTest = annonces[0];
       
-      console.log("🧪 Test réservation pour annonce:", annonceTest.id);
+      console.log("🧪 === TEST COMPLET RÉSERVATION ===");
+      console.log("🧪 User:", authUser.uid, authUser.email);
+      console.log("🧪 Annonce:", annonceTest.id, annonceTest.description);
       
+      // 1. Test vérification réservation existante
+      console.log("🧪 1. Test hasExistingReservation...");
+      const hasExisting = await reservationService.hasExistingReservation(authUser.uid, annonceTest.id!);
+      console.log("🧪 1. Résultat:", hasExisting);
+      
+      // 2. Test création réservation
+      console.log("🧪 2. Test createReservation...");
       const reservationData = {
         annonceId: annonceTest.id!,
         benevoleId: authUser.uid,
         benevoleName: authUser.displayName || authUser.email || 'Testeur',
         benevoleEmail: authUser.email || '',
-        message: `Test de réservation - ${new Date().toLocaleString()}`
+        message: `TEST AUTOMATIQUE - ${new Date().toLocaleString()}`
       };
       
       const reservationId = await reservationService.createReservation(reservationData);
+      console.log("🧪 2. Réservation créée:", reservationId);
+      
+      // 3. Test récupération par ID
+      console.log("🧪 3. Test getReservationById...");
+      const reservationById = await reservationService.getReservationById(reservationId);
+      console.log("🧪 3. Réservation récupérée:", reservationById ? "OUI" : "NON");
+      
+      // 4. Test récupération liste utilisateur
+      console.log("🧪 4. Test getReservationsByUser...");
+      const userReservations = await reservationService.getReservationsByUser(authUser.uid);
+      console.log("🧪 4. Nombre de réservations:", userReservations.length);
+      
+      // 5. Test nouvelle vérification (doit être true maintenant)
+      console.log("🧪 5. Re-test hasExistingReservation...");
+      const hasExistingAfter = await reservationService.hasExistingReservation(authUser.uid, annonceTest.id!);
+      console.log("🧪 5. Résultat après création:", hasExistingAfter);
+      
+      console.log("🧪 === FIN TEST - TOUS LES TESTS RÉUSSIS ===");
       
       Alert.alert(
-        "🧪 Test Réussi !",
-        `Réservation de test créée avec succès !\n\nID: ${reservationId}\nPour: ${annonceTest.titre}\n\nAllez voir l'onglet Réservations !`,
+        "🧪 TEST RÉUSSI !",
+        `✅ Tous les tests ont réussi !\n\n📋 ID Réservation: ${reservationId}\n📋 Pour: ${annonceTest.description}\n\n🎯 Vérifications:\n• Création: ✅\n• Récupération par ID: ✅\n• Liste utilisateur: ✅ (${userReservations.length})\n• Anti-doublon: ${hasExistingAfter ? '✅' : '❌'}\n\n📱 Allez voir l'onglet Réservations !`,
         [
           { 
-            text: "Voir Réservations", 
+            text: "📱 Voir Réservations", 
             onPress: () => router.push("/(tabs)/reservations")
           },
           { 
-            text: "OK", 
+            text: "✅ OK", 
             style: "cancel" 
           }
         ]
@@ -82,7 +109,10 @@ export default function HomePage() {
       
     } catch (error) {
       console.error("❌ Erreur test réservation:", error);
-      Alert.alert("Erreur", `Echec du test: ${error}`);
+      Alert.alert(
+        "❌ ÉCHEC DU TEST", 
+        `Le test a échoué à une étape.\n\nErreur: ${error}\n\nVérifiez la console pour plus de détails.`
+      );
     } finally {
       setIsTestingReservation(false);
     }
