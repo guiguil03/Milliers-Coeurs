@@ -369,3 +369,88 @@ export const getUserNameById = async (userId: string): Promise<string> => {
     return 'Contact';
   }
 };
+
+// Supprimer une conversation entière (conversation + tous ses messages)
+export const deleteConversation = async (conversationId: string): Promise<void> => {
+  try {
+    console.log("🗑️ Suppression de la conversation:", conversationId);
+    
+    // Supprimer tous les messages de la conversation
+    const messagesRef = ref(database, `messages/${conversationId}`);
+    await set(messagesRef, null);
+    
+    // Supprimer la conversation elle-même
+    const conversationRef = ref(database, `conversations/${conversationId}`);
+    await set(conversationRef, null);
+    
+    console.log("✅ Conversation supprimée avec succès");
+  } catch (error) {
+    console.error("❌ Erreur lors de la suppression de la conversation:", error);
+    throw error;
+  }
+};
+
+// Supprimer tous les messages d'une conversation sans supprimer la conversation
+export const clearConversationMessages = async (conversationId: string): Promise<void> => {
+  try {
+    console.log("🧹 Effacement des messages de la conversation:", conversationId);
+    
+    // Supprimer tous les messages
+    const messagesRef = ref(database, `messages/${conversationId}`);
+    await set(messagesRef, null);
+    
+    // Mettre à jour la conversation pour retirer le dernier message
+    const conversationRef = ref(database, `conversations/${conversationId}`);
+    await update(conversationRef, {
+      last_message: {
+        content: "Conversation vidée",
+        timestamp: new Date().getTime()
+      },
+      unread_count: {}
+    });
+    
+    console.log("✅ Messages de la conversation supprimés avec succès");
+  } catch (error) {
+    console.error("❌ Erreur lors de l'effacement des messages:", error);
+    throw error;
+  }
+};
+
+// Supprimer un message spécifique
+export const deleteMessage = async (conversationId: string, messageId: string): Promise<void> => {
+  try {
+    console.log("🗑️ Suppression du message:", messageId, "dans la conversation:", conversationId);
+    
+    const messageRef = ref(database, `messages/${conversationId}/${messageId}`);
+    await set(messageRef, null);
+    
+    // Récupérer les messages restants pour mettre à jour le dernier message de la conversation
+    const messages = await getConversationMessages(conversationId);
+    
+    if (messages.length > 0) {
+      // Mettre à jour le dernier message
+      const lastMessage = messages[messages.length - 1];
+      const conversationRef = ref(database, `conversations/${conversationId}`);
+      await update(conversationRef, {
+        last_message: {
+          content: lastMessage.content,
+          timestamp: lastMessage.timestamp
+        }
+      });
+    } else {
+      // Aucun message restant, mettre à jour avec un message par défaut
+      const conversationRef = ref(database, `conversations/${conversationId}`);
+      await update(conversationRef, {
+        last_message: {
+          content: "Aucun message",
+          timestamp: new Date().getTime()
+        }
+      });
+    }
+    
+    console.log("✅ Message supprimé avec succès");
+  } catch (error) {
+    console.error("❌ Erreur lors de la suppression du message:", error);
+    throw error;
+  }
+};

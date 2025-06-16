@@ -6,12 +6,13 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../contexts/AuthContext';
-import { IConversation, getUserConversations, getUserNameById } from '../services/messageService';
+import { IConversation, getUserConversations, getUserNameById, deleteConversation, clearConversationMessages } from '../services/messageService';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -87,6 +88,57 @@ const MessagesListScreen = () => {
 
   const navigateToConversation = (conversationId: string, otherUserId: string) => {
     router.push(`/messages/conversation?id=${conversationId}&userId=${otherUserId}`);
+  };
+
+  const showConversationOptions = (conversationId: string, otherUserName: string) => {
+    console.log("🔘 Bouton options cliqué pour conversation:", conversationId, "utilisateur:", otherUserName);
+    
+    // Utiliser une approche compatible web
+    const choice = window.confirm(`Options pour la conversation avec ${otherUserName}\n\nCliquez OK pour SUPPRIMER la conversation entière\nCliquez Annuler pour VIDER seulement les messages`);
+    
+    if (choice) {
+      // Utilisateur a choisi OK -> Supprimer la conversation
+      const confirmDelete = window.confirm(`ATTENTION: Supprimer définitivement votre conversation avec ${otherUserName} ?\n\nTous les messages seront perdus !`);
+      if (confirmDelete) {
+        handleDeleteConversation(conversationId, otherUserName);
+      }
+    } else {
+      // Utilisateur a choisi Annuler -> Vider les messages
+      const confirmClear = window.confirm(`Vider tous les messages de votre conversation avec ${otherUserName} ?\n\nLa conversation sera conservée mais tous les messages seront supprimés.`);
+      if (confirmClear) {
+        handleClearConversation(conversationId, otherUserName);
+      }
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId: string, otherUserName: string) => {
+    if (!conversationId) return;
+    
+    console.log("🗑️ Suppression conversation:", conversationId);
+    
+    try {
+      await deleteConversation(conversationId);
+      alert("✅ Conversation supprimée avec succès");
+      loadConversations(); // Recharger la liste
+    } catch (error) {
+      console.error("❌ Erreur lors de la suppression:", error);
+      alert("❌ Impossible de supprimer la conversation");
+    }
+  };
+
+  const handleClearConversation = async (conversationId: string, otherUserName: string) => {
+    if (!conversationId) return;
+    
+    console.log("🧹 Vidage conversation:", conversationId);
+    
+    try {
+      await clearConversationMessages(conversationId);
+      alert("✅ Messages supprimés avec succès");
+      loadConversations(); // Recharger la liste
+    } catch (error) {
+      console.error("❌ Erreur lors du vidage:", error);
+      alert("❌ Impossible de vider la conversation");
+    }
   };
 
   if (!user) {
@@ -176,6 +228,23 @@ const MessagesListScreen = () => {
                   {item.last_message?.content || 'Nouvelle conversation'}
                 </Text>
               </View>
+              
+              <TouchableOpacity 
+                style={styles.optionsButton}
+                onPress={(e) => {
+                  console.log("🎯 Clic sur bouton options détecté!");
+                  console.log("🎯 Event:", e);
+                  console.log("🎯 ConversationId:", item.id);
+                  console.log("🎯 OtherUserName:", otherUserName);
+                  
+                  e.stopPropagation(); // Empêcher la propagation du clic
+                  showConversationOptions(item.id || '', otherUserName);
+                }}
+                onPressIn={() => console.log("🔘 Press In détecté")}
+                onPressOut={() => console.log("🔘 Press Out détecté")}
+              >
+                <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+              </TouchableOpacity>
             </TouchableOpacity>
           );
         }}
@@ -320,6 +389,15 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  optionsButton: {
+    padding: 12,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 20,
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

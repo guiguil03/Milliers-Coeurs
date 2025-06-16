@@ -20,7 +20,9 @@ import {
   sendMessage,
   markMessagesAsRead,
   getUserNameById,
-  getCurrentUserId
+  getCurrentUserId,
+  deleteMessage,
+  clearConversationMessages
 } from '../services/messageService';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -128,6 +130,57 @@ const ConversationScreen = () => {
     }
   };
 
+  const handleDeleteMessage = (messageId: string) => {
+    if (!messageId || !id) return;
+    
+    console.log("🗑️ Tentative suppression message:", messageId);
+    
+    const confirmDelete = window.confirm("Supprimer ce message ?");
+    if (confirmDelete) {
+      console.log("✅ Confirmation suppression message");
+      deleteMessageConfirmed(messageId);
+    }
+  };
+
+  const deleteMessageConfirmed = async (messageId: string) => {
+    try {
+      await deleteMessage(id!, messageId);
+      console.log("✅ Message supprimé avec succès");
+      // Recharger les messages
+      const updatedMessages = await getConversationMessages(id!);
+      setMessages(updatedMessages);
+    } catch (error) {
+      console.error("❌ Erreur lors de la suppression du message:", error);
+      alert("❌ Impossible de supprimer le message");
+    }
+  };
+
+  const handleClearAllMessages = () => {
+    if (!id) return;
+    
+    console.log("🧹 Tentative vidage conversation:", id);
+    
+    const confirmClear = window.confirm("Vider TOUS les messages de cette conversation ?");
+    if (confirmClear) {
+      console.log("✅ Confirmation vidage conversation");
+      clearAllMessagesConfirmed();
+    }
+  };
+
+  const clearAllMessagesConfirmed = async () => {
+    try {
+      await clearConversationMessages(id!);
+      console.log("✅ Conversation vidée avec succès");
+      // Recharger les messages
+      const updatedMessages = await getConversationMessages(id!);
+      setMessages(updatedMessages);
+      alert("✅ Tous les messages ont été supprimés");
+    } catch (error) {
+      console.error("❌ Erreur lors du vidage de la conversation:", error);
+      alert("❌ Impossible de vider la conversation");
+    }
+  };
+
   const renderMessageItem = ({ item, index }: { item: IMessage; index: number }) => {
     const isCurrentUser = item.sender_id === user?.uid;
     const showDate = index === 0 || 
@@ -142,10 +195,21 @@ const ConversationScreen = () => {
             </Text>
           </View>
         )}
-        <View style={[
-          styles.messageContainer,
-          isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
-        ]}>
+        <TouchableOpacity
+          style={[
+            styles.messageContainer,
+            isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
+          ]}
+          onLongPress={() => {
+            if (item.id) {
+              console.log("📱 Long press sur message:", item.id);
+              const confirmDelete = window.confirm("Supprimer ce message ?");
+              if (confirmDelete) {
+                handleDeleteMessage(item.id);
+              }
+            }
+          }}
+        >
           <View style={[
             styles.messageBubble,
             isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
@@ -155,7 +219,7 @@ const ConversationScreen = () => {
               {formatMessageTime(item.timestamp)}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </>
     );
   };
@@ -213,6 +277,18 @@ const ConversationScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{otherUserName}</Text>
+        <TouchableOpacity 
+          style={styles.optionsButton}
+          onPress={() => {
+            console.log("🔘 Bouton options header cliqué");
+            const confirmClear = window.confirm("Vider tous les messages de cette conversation ?");
+            if (confirmClear) {
+              handleClearAllMessages();
+            }
+          }}
+        >
+          <Ionicons name="ellipsis-vertical" size={24} color="#333" />
+        </TouchableOpacity>
       </View>
       
       <FlatList
@@ -267,6 +343,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     backgroundColor: 'white',
     borderBottomWidth: 1,
@@ -278,7 +355,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 10,
+    flex: 1,
+    textAlign: 'center',
   },
   messagesContainer: {
     flexGrow: 1,
@@ -405,6 +483,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  optionsButton: {
+    padding: 5,
   },
 });
 

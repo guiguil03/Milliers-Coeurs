@@ -72,123 +72,82 @@ export default function AnnonceDetailsScreen() {
   const handleReservation = async () => {
     // Vérifier si l'utilisateur est connecté
     if (!user) {
-      Alert.alert(
-        "Connexion requise", 
-        "Vous devez vous connecter pour réserver une place.",
-        [
-          { text: "Annuler", style: "cancel" },
-          { text: "Se connecter", onPress: () => router.push("/profile") }
-        ]
-      );
+      alert("❌ Vous devez vous connecter pour réserver une place.");
+      router.push("/profile");
       return;
     }
 
     // Vérifier si l'utilisateur est un bénévole
     if (userType !== 'benevole') {
-      Alert.alert(
-        "Action non disponible", 
-        "Seuls les bénévoles peuvent réserver des missions."
-      );
+      alert("❌ Seuls les bénévoles peuvent réserver des missions.");
       return;
     }
 
     // Vérifier si l'annonce n'est pas celle de l'utilisateur
-    if (annonce && annonce.utilisateurId === user.uid) {
-      Alert.alert(
-        "Action non disponible", 
-        "Vous ne pouvez pas réserver votre propre annonce."
-      );
+    const isOwner = annonce && annonce.utilisateurId === user.uid;
+    if (isOwner) {
+      alert("❌ Vous ne pouvez pas réserver votre propre mission !");
       return;
     }
 
     // Si l'utilisateur a déjà réservé, proposer d'annuler la réservation
     if (hasReserved) {
-      Alert.alert(
-        "Réservation existante",
-        "Vous avez déjà réservé une place pour cette mission. Souhaitez-vous annuler votre réservation ?",
-        [
-          { text: "Non", style: "cancel" },
-          { 
-            text: "Oui, annuler", 
-            style: "destructive",
-            onPress: async () => {
-              try {
-                setIsReservationLoading(true);
-                // Récupérer la réservation existante
-                const reservations = await reservationService.getReservationsByUser(user.uid);
-                const reservation = reservations.find((r: Reservation) => r.annonceId === id);
-                
-                if (reservation && reservation.id) {
-                  // Annuler la réservation
-                  await reservationService.updateReservationStatus(reservation.id, ReservationStatut.Annulee);
-                  setHasReserved(false);
-                  Alert.alert("Réservation annulée", "Votre réservation a été annulée avec succès.");
-                }
-              } catch (error) {
-                console.error("Erreur lors de l'annulation de la réservation:", error);
-                Alert.alert("Erreur", "Impossible d'annuler la réservation. Veuillez réessayer.");
-              } finally {
-                setIsReservationLoading(false);
-              }
-            }
+      if (confirm("Vous avez déjà réservé cette mission. Souhaitez-vous annuler votre réservation ?")) {
+        try {
+          setIsReservationLoading(true);
+          // Récupérer la réservation existante
+          const reservations = await reservationService.getReservationsByUser(user.uid);
+          const reservation = reservations.find((r: Reservation) => r.annonceId === id);
+          
+          if (reservation && reservation.id) {
+            // Annuler la réservation
+            await reservationService.updateReservationStatus(reservation.id, ReservationStatut.Annulee);
+            setHasReserved(false);
+            alert("✅ Réservation annulée avec succès.");
           }
-        ]
-      );
+        } catch (error) {
+          console.error("❌ Erreur lors de l'annulation de la réservation:", error);
+          alert("❌ Impossible d'annuler la réservation. Veuillez réessayer.");
+        } finally {
+          setIsReservationLoading(false);
+        }
+      }
       return;
     }
 
-    // Créer une nouvelle réservation
-    Alert.alert(
-      "Réserver une place",
-      "Voulez-vous réserver une place pour cette mission ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Confirmer", 
-          onPress: async () => {
-            try {
-              setIsReservationLoading(true);
-              // 🎯 CRÉATION DE LA RÉSERVATION
-              console.log("🎯 Création réservation pour annonce:", id);
-              
-              const reservationData = {
-                annonceId: id as string,
-                benevoleId: user.uid,
-                benevoleName: user.displayName || user.email || 'Bénévole',
-                benevoleEmail: user.email || '',
-                message: `Réservation pour ${annonce?.titre || 'cette mission'}`
-              };
-              
-              const reservationId = await reservationService.createReservation(reservationData);
-              
-              // ✅ CONFIRMATION
-              setHasReserved(true);
-              
-              // 🎉 POPUP DE SUCCÈS
-              Alert.alert(
-                "🎉 Réservation Confirmée !",
-                `Votre réservation a été enregistrée avec succès !\n\n📋 Numéro : ${reservationId}\n\n✅ Statut : En attente de confirmation\n\n📱 Consultez l'onglet "Réservations" pour suivre votre demande.`,
-                [
-                  { 
-                    text: "Voir mes réservations", 
-                    onPress: () => router.push("/(tabs)/reservations")
-                  },
-                  { 
-                    text: "OK", 
-                    style: "cancel" 
-                  }
-                ]
-              );
-            } catch (error) {
-              console.error("🔴 [DETAILS] Erreur lors de la réservation:", error);
-              Alert.alert("Erreur", `Impossible de créer la réservation.\n\nErreur: ${error}\n\nVérifiez la console pour plus de détails.`);
-            } finally {
-              setIsReservationLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    // Créer une nouvelle réservation DIRECTEMENT
+    try {
+      setIsReservationLoading(true);
+      console.log("🎯 [DETAILS] Création réservation pour annonce:", id);
+      
+      const reservationData = {
+        annonceId: id as string,
+        benevoleId: user.uid,
+        benevoleName: user.displayName || user.email || 'Bénévole',
+        benevoleEmail: user.email || '',
+        message: `Réservation pour ${annonce?.titre || 'cette mission'}`
+      };
+      
+      const reservationId = await reservationService.createReservation(reservationData);
+      console.log("✅ [DETAILS] Réservation créée avec ID:", reservationId);
+      
+      // ✅ CONFIRMATION
+      setHasReserved(true);
+      
+      // 🎉 MESSAGE DE SUCCÈS
+      alert("🎉 RÉSERVATION CONFIRMÉE !");
+      
+      // 🔄 NAVIGATION AUTOMATIQUE vers l'onglet réservations
+      setTimeout(() => {
+        router.push("/(tabs)/reservations");
+      }, 2000);
+      
+    } catch (error) {
+      console.error("🔴 [DETAILS] Erreur lors de la réservation:", error);
+      alert(`❌ Impossible de créer la réservation. Erreur: ${error}`);
+    } finally {
+      setIsReservationLoading(false);
+    }
   };
 
   const handleContact = () => {
@@ -469,19 +428,27 @@ export default function AnnonceDetailsScreen() {
         <TouchableOpacity 
           style={[
             styles.actionButton, 
-            styles.reserverButton,
-            hasReserved && styles.cancelButton,
+            (annonce && annonce.utilisateurId === user?.uid) ? styles.ownerButton : (hasReserved ? styles.cancelButton : styles.reserverButton),
             isReservationLoading && styles.disabledButton
           ]}
           onPress={handleReservation}
-          disabled={isReservationLoading}
+          disabled={isReservationLoading || (annonce && annonce.utilisateurId === user?.uid)}
         >
           {isReservationLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name={hasReserved ? "close-circle" : "calendar"} size={22} color="#fff" />
-              <Text style={styles.actionButtonText}>{hasReserved ? "ANNULER" : "RÉSERVER"}</Text>
+              {(annonce && annonce.utilisateurId === user?.uid) ? (
+                <>
+                  <Ionicons name="person" size={22} color="#fff" />
+                  <Text style={styles.actionButtonText}>VOTRE MISSION</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name={hasReserved ? "close-circle" : "calendar"} size={22} color="#fff" />
+                  <Text style={styles.actionButtonText}>{hasReserved ? "ANNULER" : "RÉSERVER"}</Text>
+                </>
+              )}
             </>
           )}
         </TouchableOpacity>
@@ -663,6 +630,9 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: '#F44336',
+  },
+  ownerButton: {
+    backgroundColor: '#757575',
   },
   disabledButton: {
     opacity: 0.7,

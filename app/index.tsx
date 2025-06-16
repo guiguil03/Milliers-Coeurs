@@ -152,45 +152,6 @@ export default function HomePage() {
             <Text style={styles.createButtonText}>Créer une annonce</Text>
           </TouchableOpacity>
         </Link>
-        
-        {/* Bouton de test pour créer des annonces de démonstration */}
-        {authUser && (
-          <TouchableOpacity 
-            style={{
-              backgroundColor: '#4CAF50',
-              padding: 15,
-              borderRadius: 10,
-              marginTop: 10,
-              marginBottom: 10,
-              opacity: isTestingReservation ? 0.5 : 1,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3
-            }}
-            onPress={testReservation}
-            disabled={isTestingReservation}
-          >
-            <Text style={{ 
-              color: 'white', 
-              textAlign: 'center', 
-              fontWeight: 'bold',
-              fontSize: 16
-            }}>
-              {isTestingReservation ? '🧪 Test en cours...' : '🧪 TESTER LES RÉSERVATIONS'}
-            </Text>
-            <Text style={{ 
-              color: 'white', 
-              textAlign: 'center', 
-              fontSize: 12,
-              marginTop: 5,
-              opacity: 0.9
-            }}>
-              Créer une réservation de test et la voir dans l'onglet
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
       
       {loading ? (
