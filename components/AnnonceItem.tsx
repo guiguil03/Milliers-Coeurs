@@ -117,15 +117,24 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
     console.log('🚀 [RESERVATION] === RÉSERVATION DIRECTE ===');
     console.log('🚀 [RESERVATION] User:', user?.uid, user?.email);
     console.log('🚀 [RESERVATION] AnnonceId:', annonceId);
+    console.log('🚀 [RESERVATION] IsOwner:', isOwner);
 
     // Vérifications préliminaires
     if (!user) {
       console.log('❌ [RESERVATION] Pas d\'utilisateur connecté');
+      alert("Vous devez être connecté pour réserver !");
       return;
     }
 
     if (!annonceId) {
       console.log('❌ [RESERVATION] Pas d\'ID d\'annonce');
+      return;
+    }
+
+    // Vérification propriétaire - EMPÊCHER DE RÉSERVER SA PROPRE MISSION
+    if (isOwner) {
+      console.log('🚫 [RESERVATION] Tentative de réservation de sa propre mission bloquée');
+      alert("❌ Vous ne pouvez pas réserver votre propre mission !");
       return;
     }
 
@@ -281,16 +290,25 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.actionButton, styles.reserverButton]} 
+          style={[
+            styles.actionButton, 
+            isOwner ? styles.reserverButtonDisabled : styles.reserverButton
+          ]} 
           onPress={handleReservation}
-          disabled={isReserving}
+          disabled={isReserving || !!isOwner}
         >
           {isReserving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Text style={styles.actionText}>RÉSERVER</Text>
-              <Ionicons name="calendar-outline" size={18} color="#fff" />
+              <Text style={styles.actionText}>
+                {isOwner ? "VOTRE MISSION" : "RÉSERVER"}
+              </Text>
+              <Ionicons 
+                name={isOwner ? "person-outline" : "calendar-outline"} 
+                size={18} 
+                color="#fff" 
+              />
             </>
           )}
         </TouchableOpacity>
@@ -402,6 +420,9 @@ const styles = StyleSheet.create({
   },
   reserverButton: {
     backgroundColor: '#03A9F4',
+  },
+  reserverButtonDisabled: {
+    backgroundColor: '#999',
   },
   partagerButton: {
     backgroundColor: '#FF9800',
