@@ -1,150 +1,212 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
-  RefreshControl,
-  Alert
+  Alert,
+  Image,
+  RefreshControl
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../contexts/AuthContext';
-import { IConversation, getUserConversations, getUserNameById, deleteConversation, clearConversationMessages } from '../services/messageService';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import {
+  IConversation,
+  IMessage,
+  getConversations,
+  getConversationMessages,
+  getUserNameById,
+  getUnreadMessagesCount,
+  deleteConversation
+} from '../services/messageSupabaseService';
 
-const MessagesListScreen = () => {
-  const [conversations, setConversations] = useState<IConversation[]>([]);
+interface ConversationWithLastMessage extends IConversation {
+  lastMessage?: IMessage;
+  otherUserName: string;
+  unreadCount: number;
+}
+
+export default function MessagesListScreen() {
+  const [conversations, setConversations] = useState<ConversationWithLastMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const { user } = useAuthContext();
   const router = useRouter();
 
   const loadConversations = async () => {
-    if (!user) return;
-    
+    if (!user?.id) {
+      setError('Utilisateur non connecté');
+      setLoading(false);
+      return;
+    }
+
     try {
-      setError(null);
-      const userConversations = await getUserConversations(user.uid);
-      setConversations(userConversations);
+      console.log('📱 [MESSAGES] Chargement des conversations pour:', user.id);
       
-      // Charger les noms des utilisateurs pour chaque conversation
-      const names: Record<string, string> = {};
-      for (const conv of userConversations) {
-        for (const participantId of conv.participants) {
-          if (participantId !== user.uid && !names[participantId]) {
-            names[participantId] = await getUserNameById(participantId);
+      // Récupérer toutes les conversations
+      const convs = await getConversations(user.id);
+      console.log('📱 [MESSAGES] Conversations trouvées:', convs.length);
+
+      // Enrichir chaque conversation avec les informations supplémentaires
+      const enrichedConversations = await Promise.all(
+        convs.map(async (conv) => {
+          try {
+            // Déterminer l'ID de l'autre utilisateur
+            const otherUserId = conv.user1_id === user.id ? conv.user2_id : conv.user1_id;
+            
+            // Récupérer le nom de l'autre utilisateur
+            const otherUserName = await getUserNameById(otherUserId);
+            
+            // Récupérer le dernier message
+            const messages = await getConversationMessages(conv.id);
+            const lastMessage = messages[messages.length - 1];
+            
+            // Compter les messages non lus
+            const unreadCount = messages.filter(
+              msg => msg.receiver_id === user.id && !msg.read
+            ).length;
+
+            return {
+              ...conv,
+              lastMessage,
+              otherUserName,
+              unreadCount
+            };
+          } catch (error) {
+            console.error('Erreur lors de l\'enrichissement de la conversation:', error);
+            return {
+              ...conv,
+              otherUserName: 'Utilisateur inconnu',
+              unreadCount: 0
+            };
           }
-        }
-      }
-      setUserNames(names);
-    } catch (err) {
-      console.error('Erreur lors du chargement des conversations:', err);
-      setError('Impossible de charger vos conversations');
+        })
+      );
+
+      // Trier par date du dernier message
+      enrichedConversations.sort((a, b) => 
+        new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+      );
+
+      setConversations(enrichedConversations);
+      setError(null);
+    } catch (error) {
+      console.error('❌ [MESSAGES] Erreur lors du chargement des conversations:', error);
+      setError('Impossible de charger les conversations');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    loadConversations();
-  }, [user]);
-
   const handleRefresh = () => {
     setRefreshing(true);
     loadConversations();
   };
 
-  const getOtherParticipantName = (conversation: IConversation): string => {
-    if (!user) return 'Contact';
-    
-    const otherParticipantId = conversation.participants.find(id => id !== user.uid);
-    if (!otherParticipantId) return 'Contact';
-    
-    return userNames[otherParticipantId] || 'Contact';
+  const handleDeleteConversation = (conversationId: string, otherUserName: string) => {
+    Alert.alert(
+      'Supprimer la conversation',
+      `Voulez-vous vraiment supprimer la conversation avec ${otherUserName} ?`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteConversation(conversationId, user!.id);
+              loadConversations(); // Recharger la liste
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible de supprimer la conversation');
+            }
+          }
+        }
+      ]
+    );
   };
 
-  const formatTimestamp = (timestamp: number): string => {
-    try {
-      return formatDistanceToNow(new Date(timestamp), { 
-        addSuffix: true,
-        locale: fr
-      });
-    } catch (error) {
-      return '';
-    }
+  const openConversation = (conversation: ConversationWithLastMessage) => {
+    const otherUserId = conversation.user1_id === user?.id ? conversation.user2_id : conversation.user1_id;
+    router.push(`/conversation/${conversation.id}?userId=${otherUserId}&name=${encodeURIComponent(conversation.otherUserName)}`);
   };
 
-  const getUnreadCount = (conversation: IConversation): number => {
-    if (!user || !conversation.unread_count) return 0;
-    return conversation.unread_count[user.uid] || 0;
-  };
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
-  const navigateToConversation = (conversationId: string, otherUserId: string) => {
-    router.push(`/messages/conversation?id=${conversationId}&userId=${otherUserId}`);
-  };
-
-  const showConversationOptions = (conversationId: string, otherUserName: string) => {
-    console.log("🔘 Bouton options cliqué pour conversation:", conversationId, "utilisateur:", otherUserName);
-    
-    // Utiliser une approche compatible web
-    const choice = window.confirm(`Options pour la conversation avec ${otherUserName}\n\nCliquez OK pour SUPPRIMER la conversation entière\nCliquez Annuler pour VIDER seulement les messages`);
-    
-    if (choice) {
-      // Utilisateur a choisi OK -> Supprimer la conversation
-      const confirmDelete = window.confirm(`ATTENTION: Supprimer définitivement votre conversation avec ${otherUserName} ?\n\nTous les messages seront perdus !`);
-      if (confirmDelete) {
-        handleDeleteConversation(conversationId, otherUserName);
-      }
+    if (diffInHours < 1) {
+      return `${Math.floor(diffInHours * 60)}min`;
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h`;
     } else {
-      // Utilisateur a choisi Annuler -> Vider les messages
-      const confirmClear = window.confirm(`Vider tous les messages de votre conversation avec ${otherUserName} ?\n\nLa conversation sera conservée mais tous les messages seront supprimés.`);
-      if (confirmClear) {
-        handleClearConversation(conversationId, otherUserName);
-      }
+      return `${Math.floor(diffInHours / 24)}j`;
     }
   };
 
-  const handleDeleteConversation = async (conversationId: string, otherUserName: string) => {
-    if (!conversationId) return;
-    
-    console.log("🗑️ Suppression conversation:", conversationId);
-    
-    try {
-      await deleteConversation(conversationId);
-      alert("✅ Conversation supprimée avec succès");
-      loadConversations(); // Recharger la liste
-    } catch (error) {
-      console.error("❌ Erreur lors de la suppression:", error);
-      alert("❌ Impossible de supprimer la conversation");
-    }
-  };
+  const renderConversationItem = ({ item }: { item: ConversationWithLastMessage }) => (
+    <TouchableOpacity
+      style={styles.conversationItem}
+      onPress={() => openConversation(item)}
+      onLongPress={() => handleDeleteConversation(item.id, item.otherUserName)}
+    >
+      <View style={styles.avatarContainer}>
+        <Image
+          source={{
+            uri: `https://api.dicebear.com/7.x/initials/png?seed=${item.otherUserName}&backgroundColor=4f46e5`
+          }}
+          style={styles.avatar}
+        />
+        {item.unreadCount > 0 && (
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadCount}>
+              {item.unreadCount > 9 ? '9+' : item.unreadCount}
+            </Text>
+          </View>
+        )}
+      </View>
 
-  const handleClearConversation = async (conversationId: string, otherUserName: string) => {
-    if (!conversationId) return;
-    
-    console.log("🧹 Vidage conversation:", conversationId);
-    
-    try {
-      await clearConversationMessages(conversationId);
-      alert("✅ Messages supprimés avec succès");
-      loadConversations(); // Recharger la liste
-    } catch (error) {
-      console.error("❌ Erreur lors du vidage:", error);
-      alert("❌ Impossible de vider la conversation");
-    }
-  };
+      <View style={styles.conversationContent}>
+        <View style={styles.headerRow}>
+          <Text style={styles.userName}>{item.otherUserName}</Text>
+          {item.lastMessage && (
+            <Text style={styles.timestamp}>
+              {formatTime(item.lastMessage.timestamp)}
+            </Text>
+          )}
+        </View>
+
+        <Text 
+          style={[
+            styles.lastMessage,
+            item.unreadCount > 0 && styles.unreadMessage
+          ]}
+          numberOfLines={1}
+        >
+          {item.lastMessage ? item.lastMessage.content : 'Aucun message'}
+        </Text>
+      </View>
+
+      <Ionicons name="chevron-forward" size={20} color="#ccc" />
+    </TouchableOpacity>
+  );
+
+  useEffect(() => {
+    loadConversations();
+  }, [user]);
 
   if (!user) {
     return (
-      <View style={styles.centeredContainer}>
-        <Ionicons name="chatbubbles-outline" size={60} color="#ccc" />
+      <View style={styles.centered}>
+        <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
         <Text style={styles.emptyText}>Connectez-vous pour accéder à vos messages</Text>
         <TouchableOpacity 
           style={styles.actionButton}
@@ -156,25 +218,22 @@ const MessagesListScreen = () => {
     );
   }
 
-  if (loading && !refreshing) {
+  if (loading) {
     return (
-      <View style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#E0485A" />
-        <Text style={styles.loadingText}>Chargement de vos conversations...</Text>
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#4f46e5" />
+        <Text style={styles.loadingText}>Chargement des conversations...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centeredContainer}>
-        <Ionicons name="alert-circle-outline" size={60} color="#E0485A" />
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle" size={48} color="#ef4444" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={loadConversations}
-        >
-          <Text style={styles.actionButtonText}>Réessayer</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadConversations}>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
         </TouchableOpacity>
       </View>
     );
@@ -182,223 +241,181 @@ const MessagesListScreen = () => {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={conversations}
-        keyExtractor={(item) => item.id || Math.random().toString()}
-        renderItem={({ item }) => {
-          const otherUserId = item.participants.find(id => id !== user.uid) || '';
-          const otherUserName = getOtherParticipantName(item);
-          const unreadCount = getUnreadCount(item);
-          
-          return (
-            <TouchableOpacity 
-              style={styles.conversationItem}
-              onPress={() => navigateToConversation(item.id || '', otherUserId)}
-            >
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {otherUserName.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                {unreadCount > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{unreadCount}</Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.conversationContent}>
-                <View style={styles.conversationHeader}>
-                  <Text style={styles.userName}>{otherUserName}</Text>
-                  {item.last_message?.timestamp && (
-                    <Text style={styles.timestamp}>
-                      {formatTimestamp(item.last_message.timestamp)}
-                    </Text>
-                  )}
-                </View>
-                
-                <Text 
-                  style={[
-                    styles.lastMessage, 
-                    unreadCount > 0 && styles.unreadMessage
-                  ]}
-                  numberOfLines={1}
-                >
-                  {item.last_message?.content || 'Nouvelle conversation'}
-                </Text>
-              </View>
-              
-              <TouchableOpacity 
-                style={styles.optionsButton}
-                onPress={(e) => {
-                  console.log("🎯 Clic sur bouton options détecté!");
-                  console.log("🎯 Event:", e);
-                  console.log("🎯 ConversationId:", item.id);
-                  console.log("🎯 OtherUserName:", otherUserName);
-                  
-                  e.stopPropagation(); // Empêcher la propagation du clic
-                  showConversationOptions(item.id || '', otherUserName);
-                }}
-                onPressIn={() => console.log("🔘 Press In détecté")}
-                onPressOut={() => console.log("🔘 Press Out détecté")}
-              >
-                <Ionicons name="ellipsis-vertical" size={20} color="#666" />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={['#E0485A']}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={60} color="#ccc" />
-            <Text style={styles.emptyText}>Vous n'avez pas encore de conversations</Text>
-            <Text style={styles.emptySubText}>
-              Contactez un organisateur depuis une annonce pour démarrer une conversation
-            </Text>
-          </View>
-        }
-      />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Messages</Text>
+        <TouchableOpacity 
+          style={styles.newMessageButton}
+          onPress={() => router.push('/new-conversation')}
+        >
+          <Ionicons name="create-outline" size={24} color="#4f46e5" />
+        </TouchableOpacity>
+      </View>
+
+      {conversations.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyText}>Aucune conversation</Text>
+          <Text style={styles.emptySubtext}>
+            Commencez une conversation en contactant une association !
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={conversations}
+          renderItem={renderConversationItem}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff'
   },
-  centeredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  conversationItem: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginRight: 16,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#E0485A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#E0485A',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  conversationContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  conversationHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb'
   },
-  userName: {
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#111827'
   },
-  timestamp: {
-    fontSize: 12,
-    color: '#999',
+  newMessageButton: {
+    padding: 8
   },
-  lastMessage: {
-    fontSize: 14,
-    color: '#666',
-  },
-  unreadMessage: {
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  emptyContainer: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 20,
+    padding: 20
   },
   loadingText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 10,
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6b7280'
   },
   errorText: {
+    marginTop: 12,
     fontSize: 16,
-    color: '#E0485A',
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 20,
+    color: '#ef4444',
+    textAlign: 'center'
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#4f46e5',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600'
   },
   actionButton: {
-    backgroundColor: '#E0485A',
-    paddingVertical: 10,
+    marginTop: 16,
+    backgroundColor: '#4f46e5',
     paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 8
   },
   actionButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#fff',
     fontSize: 16,
+    fontWeight: '600'
   },
-  optionsButton: {
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 20,
-    minWidth: 40,
-    minHeight: 40,
+  emptyState: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 40
   },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginTop: 16
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginTop: 8
+  },
+  listContainer: {
+    paddingVertical: 8
+  },
+  conversationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6'
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  unreadCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold'
+  },
+  conversationContent: {
+    flex: 1,
+    marginRight: 8
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827'
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#6b7280'
+  },
+  lastMessage: {
+    fontSize: 14,
+    color: '#6b7280'
+  },
+  unreadMessage: {
+    fontWeight: '600',
+    color: '#111827'
+  }
 });
-
-export default MessagesListScreen;

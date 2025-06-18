@@ -1,331 +1,228 @@
-import { StyleSheet, View, Text, TouchableOpacity, Image, TextInput, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Alert
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { messages as dummyMessages, Message, ConversationMessage } from '../../data/messages';
-import { 
-  IMessage, 
-  listenToConversationMessages, 
-  sendMessage as sendFirebaseMessage,
-  sendMessageWithAutoConversation,
-  markMessagesAsRead, 
-  getCurrentUserId 
-} from '../../services/messageService';
-import { auth } from '../../config/firebase';
-
-// Interface pour adapter les messages Firebase au format de l'application
-interface AppConversationMessage extends ConversationMessage {
-  firebaseId?: string;
-}
+import { useAuthContext } from '../../contexts/AuthContext';
+import {
+  IMessage,
+  listenToConversationMessages,
+  sendMessage,
+  markMessagesAsRead,
+  getUserNameById
+} from '../../services/messageSupabaseService';
 
 export default function ConversationPage() {
-  const { id } = useLocalSearchParams();
-  const router = useRouter();
-  const [message, setMessage] = useState('');
-  const [currentConversation, setCurrentConversation] = useState<AppConversationMessage[]>([]);
-  const [currentContact, setCurrentContact] = useState<{ id: string; sender: string; avatar: string } | null>(null);
+  const { id, userId, name } = useLocalSearchParams<{ 
+    id: string; 
+    userId: string; 
+    name: string; 
+  }>();
+  
+  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contactName, setContactName] = useState(name || 'Contact');
+  
+  const { user } = useAuthContext();
+  const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
-  
-  // Détermine si nous utilisons Firebase ou les données fictives
-  const [usingFirebase, setUsingFirebase] = useState(false);
-  
-  // Trouver la conversation correspondante
+
   useEffect(() => {
-    if (!id) return;
-    
-    const conversationId = id.toString();
-    
-    // Vérifier si l'utilisateur est connecté
-    if (!auth.currentUser) {
-      // Utiliser les données fictives
-      const messageId = parseInt(conversationId);
-      const foundMessage = dummyMessages.find(m => m.id === messageId);
-      
-      if (foundMessage) {
-        setCurrentContact({
-          id: foundMessage.id.toString(),
-          sender: foundMessage.sender,
-          avatar: foundMessage.avatar
-        });
-        setCurrentConversation(foundMessage.conversation || []);
-        
-        // Marquer tous les messages comme lus
-        if (foundMessage.unread) {
-          foundMessage.unread = false;
-          if (foundMessage.conversation) {
-            foundMessage.conversation.forEach(msg => {
-              if (msg.sender === 'other') {
-                msg.read = true;
-              }
-            });
-          }
-        }
-      }
-      
+    if (!id || !user?.id) {
+      setError('Paramètres de conversation manquants');
       setLoading(false);
       return;
     }
-    
-    // Utiliser Firebase
-    setUsingFirebase(true);
-    
-    try {
-      const userId = getCurrentUserId();
-      
-      // Définir un contact temporaire (pour le moment)
-      setCurrentContact({
-        id: conversationId,
-        sender: 'Contact',
-        avatar: 'https://i.pravatar.cc/100?img=10'
-      });
-      
-      // Charger les messages et écouter les mises à jour
-      const unsubscribe = listenToConversationMessages(conversationId, (messages) => {
-        // Transformer les messages Firebase en format de l'application
-        const transformedMessages = messages.map((msg, index) => {
-          return {
-            id: index + 1,
-            firebaseId: msg.id,
-            text: msg.content,
-            time: formatFirebaseTime(msg.timestamp),
-            sender: msg.sender_id === userId ? 'me' : 'other',
-            read: msg.read
-          };
-        });
-        
-        setCurrentConversation(transformedMessages);
-        setLoading(false);
-        
-        // Marquer les messages comme lus
-        if (messages.some(msg => msg.receiver_id === userId && !msg.read)) {
-          markMessagesAsRead(conversationId, userId).catch(err => {
-            console.error('Erreur lors du marquage des messages comme lus:', err);
-          });
-        }
-      });
-      
-      return () => {
-        unsubscribe();
-      };
-    } catch (err) {
-      console.error('Erreur lors du chargement des messages:', err);
-      setError('Impossible de charger la conversation');
+
+    console.log('📱 [CONVERSATION] Chargement conversation:', { id, userId, name });
+
+    // Récupérer le nom du contact si pas fourni
+    if (userId && !name) {
+      getUserNameById(userId).then(setContactName);
+    }
+
+    // Écouter les messages en temps réel
+    const unsubscribe = listenToConversationMessages(id, (newMessages) => {
+      console.log('📱 [CONVERSATION] Messages reçus:', newMessages.length);
+      setMessages(newMessages);
       setLoading(false);
-    }
-  }, [id]);
-  
-  // Formater l'horodatage Firebase pour l'affichage
-  const formatFirebaseTime = (timestamp: any): string => {
-    if (!timestamp) return 'À l\'instant';
-    
-    try {
-      // Convertir le timestamp en date
-      const date = new Date(timestamp);
       
-      // Date d'aujourd'hui
-      const today = new Date();
-      
-      // Si c'est aujourd'hui, afficher l'heure
-      if (date.toDateString() === today.toDateString()) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
-      
-      // Si c'est hier
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      if (date.toDateString() === yesterday.toDateString()) {
-        return 'Hier, ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
-      
-      // Sinon, afficher la date et l'heure
-      return date.toLocaleDateString() + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (err) {
-      return 'Date inconnue';
-    }
-  };
-  
-  // Faire défiler jusqu'au dernier message
-  useEffect(() => {
-    if (flatListRef.current && currentConversation.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 200);
-    }
-  }, [currentConversation]);
-  
-  const handleSend = async () => {
-    if (message.trim() === '') return;
-    
-    if (usingFirebase) {
-      // Envoyer un message via Firebase
-      try {
-        const conversationId = id?.toString() || '';
-        // Vérifier si l'utilisateur est connecté
-        if (!auth.currentUser) {
-          setError("Vous devez être connecté pour envoyer un message");
-          return;
-        }
-        
-        const userId = getCurrentUserId();
-        // Définir l'ID du destinataire - dans une vraie application, cela viendrait des données de la conversation
-        // Pour l'instant, nous utilisons une valeur par défaut si currentContact n'est pas défini
-        const receiverId = currentContact?.id || 'receiver123';
-        
-        // Log pour le débogage
-        console.log("Envoi d'un message Firebase:", {
-          conversationId,
-          userId,
-          receiverId,
-          message
+      // Marquer les messages comme lus
+      if (newMessages.some(msg => msg.receiver_id === user.id && !msg.read)) {
+        markMessagesAsRead(id, user.id).catch(err => {
+          console.error('Erreur lors du marquage des messages comme lus:', err);
         });
-        
-        let messageId;
-        
-        if (conversationId === 'new') {
-          // Créer une nouvelle conversation et envoyer le message
-          messageId = await sendMessageWithAutoConversation(userId, receiverId, message);
-        } else {
-          // Créer un nouveau message dans une conversation existante
-          const newMessage = {
-            sender_id: userId,
-            receiver_id: receiverId,
-            content: message,
-            timestamp: new Date().getTime(),
-            read: false,
-            conversation_id: conversationId
-          };
-          
-          // Envoyer le message et récupérer l'ID
-          messageId = await sendFirebaseMessage(newMessage);
-        }
-        
-        console.log("Message envoyé avec l'ID:", messageId);
-        
-        // Vider le champ de message
-        setMessage('');
-      } catch (err) {
-        console.error('Erreur lors de l\'envoi du message:', err);
-        setError('Impossible d\'envoyer le message: ' + (err instanceof Error ? err.message : String(err)));
       }
-    } else {
-      // Utiliser les données fictives pour l'UI
-      // Ajouter le nouveau message à la conversation
-      const newMessage: AppConversationMessage = {
-        id: currentConversation.length + 1,
-        text: message,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        sender: 'me',
-        read: true
-      };
-      
-      // Mettre à jour la conversation
-      const updatedConversation = [...currentConversation, newMessage];
-      setCurrentConversation(updatedConversation);
-      
-      setMessage('');
-      
-      // Simuler une réponse après 2 secondes
+
+      // Défiler vers le bas pour voir le dernier message
       setTimeout(() => {
-        const autoReply: AppConversationMessage = {
-          id: updatedConversation.length + 1,
-          text: 'Merci pour votre message. Nous vous répondrons dès que possible.',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          sender: 'other',
-          read: true
-        };
-        
-        setCurrentConversation([...updatedConversation, autoReply]);
-      }, 2000);
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [id, user, userId, name]);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !user?.id || !userId || !id) {
+      return;
+    }
+
+    setSending(true);
+    try {
+      console.log('📤 [CONVERSATION] Envoi message:', {
+        conversationId: id,
+        senderId: user.id,
+        receiverId: userId,
+        content: newMessage.trim()
+      });
+
+      await sendMessage(id, user.id, userId, newMessage.trim());
+      setNewMessage('');
+      
+      // Défiler vers le bas après envoi
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (error) {
+      console.error('❌ [CONVERSATION] Erreur envoi message:', error);
+      Alert.alert('Erreur', 'Impossible d\'envoyer le message');
+    } finally {
+      setSending(false);
     }
   };
-  
-  const renderItem = ({ item }: { item: AppConversationMessage }) => {
-    const isMe = item.sender === 'me';
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('fr-FR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const renderMessage = ({ item }: { item: IMessage }) => {
+    const isMe = item.sender_id === user?.id;
     
     return (
-      <View style={[styles.messageContainer, isMe ? styles.myMessage : styles.otherMessage]}>
-        {!isMe && (
-          <Image 
-            source={{ uri: currentContact?.avatar }} 
-            style={styles.avatar} 
-          />
-        )}
-        <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.otherBubble]}>
-          <Text style={styles.messageText}>{item.text}</Text>
-          <Text style={styles.messageTime}>{item.time}</Text>
+      <View style={[
+        styles.messageContainer,
+        isMe ? styles.myMessage : styles.otherMessage
+      ]}>
+        <View style={[
+          styles.messageBubble,
+          isMe ? styles.myMessageBubble : styles.otherMessageBubble
+        ]}>
+          <Text style={[
+            styles.messageText,
+            isMe ? styles.myMessageText : styles.otherMessageText
+          ]}>
+            {item.content}
+          </Text>
+          <Text style={[
+            styles.messageTime,
+            isMe ? styles.myMessageTime : styles.otherMessageTime
+          ]}>
+            {formatTime(item.timestamp)}
+          </Text>
         </View>
       </View>
     );
   };
-  
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E0485A" />
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#4f46e5" />
         <Text style={styles.loadingText}>Chargement de la conversation...</Text>
       </View>
     );
   }
-  
-  if (!currentContact) {
+
+  if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Conversation introuvable</Text>
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle" size={48} color="#ef4444" />
+        <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Retour</Text>
         </TouchableOpacity>
       </View>
     );
   }
-  
+
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={100}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Image source={{ uri: currentContact.avatar }} style={styles.contactAvatar} />
+        
+        <Image 
+          source={{
+            uri: `https://api.dicebear.com/7.x/initials/png?seed=${contactName}&backgroundColor=4f46e5`
+          }} 
+          style={styles.contactAvatar} 
+        />
+        
         <View style={styles.contactInfo}>
-          <Text style={styles.contactName}>{currentContact.sender}</Text>
-          <Text style={styles.contactStatus}>En ligne</Text>
+          <Text style={styles.contactName}>{contactName}</Text>
         </View>
       </View>
-      
-      {error && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
-      )}
-      
+
+      {/* Messages */}
       <FlatList
         ref={flatListRef}
-        data={currentConversation}
-        renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.conversationContainer}
-        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        data={messages}
+        renderItem={renderMessage}
+        keyExtractor={(item) => item.id}
+        style={styles.messagesList}
+        contentContainerStyle={styles.messagesContent}
+        showsVerticalScrollIndicator={false}
       />
-      
+
+      {/* Input */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={styles.textInput}
+          value={newMessage}
+          onChangeText={setNewMessage}
           placeholder="Tapez votre message..."
-          value={message}
-          onChangeText={setMessage}
           multiline
+          maxLength={1000}
         />
-        <TouchableOpacity 
-          style={[styles.sendButton, message.trim() === '' ? styles.disabledButton : {}]} 
-          onPress={handleSend}
-          disabled={message.trim() === ''}
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            (!newMessage.trim() || sending) && styles.sendButtonDisabled
+          ]}
+          onPress={handleSendMessage}
+          disabled={!newMessage.trim() || sending}
         >
-          <Ionicons name="send" size={20} color="#fff" />
+          {sending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="send" size={20} color="#fff" />
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -335,140 +232,140 @@ export default function ConversationPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff'
   },
-  loadingContainer: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
-    color: '#777'
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    color: '#6b7280'
   },
   errorText: {
+    marginTop: 12,
     fontSize: 16,
-    color: '#cc0000',
-    marginBottom: 20,
+    color: '#ef4444',
+    textAlign: 'center'
+  },
+  backButton: {
+    marginTop: 16,
+    backgroundColor: '#4f46e5',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8
   },
   backButtonText: {
-    color: '#E0485A',
+    color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  errorBanner: {
-    backgroundColor: '#ffeeee',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ffcccc',
-  },
-  errorBannerText: {
-    color: '#cc0000',
-    fontSize: 14,
-    textAlign: 'center',
+    fontWeight: '600'
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#fff',
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff'
   },
-  backButton: {
-    marginRight: 15,
+  backBtn: {
+    marginRight: 12
   },
   contactAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 12
   },
   contactInfo: {
-    flex: 1,
+    flex: 1
   },
   contactName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827'
   },
-  contactStatus: {
-    fontSize: 12,
-    color: '#4CAF50',
+  messagesList: {
+    flex: 1,
+    backgroundColor: '#f9fafb'
   },
-  conversationContainer: {
-    padding: 15,
-    paddingBottom: 30,
+  messagesContent: {
+    padding: 16
   },
   messageContainer: {
-    flexDirection: 'row',
-    marginBottom: 15,
-    maxWidth: '80%',
+    marginVertical: 4
   },
   myMessage: {
-    alignSelf: 'flex-end',
+    alignItems: 'flex-end'
   },
   otherMessage: {
-    alignSelf: 'flex-start',
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginRight: 10,
-    alignSelf: 'flex-end',
+    alignItems: 'flex-start'
   },
   messageBubble: {
-    padding: 12,
-    borderRadius: 18,
+    maxWidth: '80%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20
   },
-  myBubble: {
-    backgroundColor: '#E0485A',
+  myMessageBubble: {
+    backgroundColor: '#4f46e5'
   },
-  otherBubble: {
-    backgroundColor: '#e0e0e0',
+  otherMessageBubble: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb'
   },
   messageText: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 16,
+    lineHeight: 20
+  },
+  myMessageText: {
+    color: '#fff'
+  },
+  otherMessageText: {
+    color: '#111827'
   },
   messageTime: {
-    fontSize: 10,
-    color: '#777',
-    alignSelf: 'flex-end',
-    marginTop: 5,
+    fontSize: 12,
+    marginTop: 4
+  },
+  myMessageTime: {
+    color: '#e0e7ff'
+  },
+  otherMessageTime: {
+    color: '#6b7280'
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 10,
-    backgroundColor: '#fff',
+    alignItems: 'flex-end',
+    padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#e5e7eb',
+    backgroundColor: '#fff'
   },
-  input: {
+  textInput: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
     borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginRight: 12,
     maxHeight: 100,
+    fontSize: 16
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E0485A',
+    backgroundColor: '#4f46e5',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
+    alignItems: 'center'
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
+  sendButtonDisabled: {
+    backgroundColor: '#9ca3af'
   }
 });

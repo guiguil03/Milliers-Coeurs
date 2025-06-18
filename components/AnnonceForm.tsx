@@ -12,7 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import { annonceSupabaseService, Annonce } from '../services/annonceSupabaseService';
 import { useAuthContext } from '../contexts/AuthContext';
 import { MISSION_CATEGORIES, Category } from '../constants/categories';
 
@@ -51,7 +51,7 @@ const AnnonceForm: React.FC<AnnonceFormProps> = ({ annonceId, onSuccess, onCance
 
     try {
       setLoadingAnnonce(true);
-      const annonce = await annonceService.getAnnonceById(annonceId);
+      const annonce = await annonceSupabaseService.getAnnonceById(annonceId);
       
       if (annonce) {
         setOrganisation(annonce.organisation || '');
@@ -96,15 +96,15 @@ const AnnonceForm: React.FC<AnnonceFormProps> = ({ annonceId, onSuccess, onCance
         logo: logo || null,
         places: places ? parseInt(places) : null,
         contact: Object.keys(contact).length > 0 ? contact : null,
-        utilisateurId: user.uid
+        utilisateurId: user.id
       };
 
       let id;
       if (isEditMode && annonceId) {
-        await annonceService.updateAnnonce(annonceId, annonceData);
+        await annonceSupabaseService.updateAnnonce(annonceId, annonceData);
         id = annonceId;
       } else {
-        id = await annonceService.createAnnonce(annonceData);
+        id = await annonceSupabaseService.createAnnonce(annonceData);
       }
 
       Alert.alert(

@@ -1,18 +1,18 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import ConversationScreen from '../../screens/ConversationScreen';
+import React, { useEffect } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
-export default function ConversationPage() {
-  return (
-    <View style={styles.container}>
-      <ConversationScreen />
-    </View>
-  );
+export default function ConversationRedirect() {
+  const router = useRouter();
+  const { id, userId } = useLocalSearchParams<{ id: string; userId: string }>();
+
+  useEffect(() => {
+    // Rediriger vers la nouvelle route de conversation
+    if (id && userId) {
+      router.replace(`/conversation/${id}?userId=${userId}`);
+    } else {
+      router.replace('/messages');
+    }
+  }, [id, userId, router]);
+
+  return null; // Page de redirection, pas d'UI nécessaire
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-  },
-});

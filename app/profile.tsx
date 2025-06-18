@@ -4,13 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { ICompetence, IExperience, IProfile } from '../data/profil';
-import { profileService } from '../services/profileService';
-import { storage } from '../config/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { 
+  getUserProfile, 
+  updateUserProfile, 
+  setUserProfile,
+  uploadProfileImage 
+} from '../services/profileSupabaseService';
 import { Stack, useRouter } from 'expo-router';
 import Header from '../components/Header';
-import firebase from 'firebase/app';
-import 'firebase/firestore';
 
 export default function ProfilePage() {
   const { user, userType, logout } = useAuthContext();
@@ -47,7 +48,7 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       setError(null);
-      const userProfile = await profileService.getProfile(user.uid);
+      const userProfile = await getUserProfile(user.id);
       
       if (userProfile) {
         setProfile(userProfile);
@@ -55,16 +56,16 @@ export default function ProfilePage() {
       } else {
         // Créer un profil par défaut si aucun n'existe
         const defaultProfile: IProfile = {
-          uid: user.uid,
-          prenom: user.displayName?.split(' ')[0] || '',
-          nom: user.displayName?.split(' ').slice(1).join(' ') || '',
+          uid: user.id,
+          prenom: user.user_metadata?.display_name || user.email?.split(' ')[0] || '',
+          nom: user.user_metadata?.display_name || user.email?.split(' ').slice(1).join(' ') || '',
           email: user.email || '',
           image: 'https://i.pravatar.cc/300',
           userType: userType || 'benevole',
           competences: [],
           experiences: []
         };
-        await profileService.setProfile(defaultProfile);
+        await setUserProfile(defaultProfile);
         setProfile(defaultProfile);
         setTempProfile(defaultProfile);
       }
@@ -101,18 +102,8 @@ export default function ProfilePage() {
     try {
       setUploading(true);
       
-      // Convertir l'URI en blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
-      // Créer une référence de stockage avec un nom de fichier unique
-      const imageRef = ref(storage, `profileImages/${user.uid}_${new Date().getTime()}`);
-      
-      // Uploader le blob
-      await uploadBytes(imageRef, blob);
-      
-      // Obtenir l'URL de l'image uploadée
-      const downloadURL = await getDownloadURL(imageRef);
+      // Utiliser le service Supabase pour uploader l'image
+      const downloadURL = await uploadProfileImage(user.id, uri);
       
       // Mettre à jour le profil avec la nouvelle image
       if (tempProfile) {
@@ -124,12 +115,11 @@ export default function ProfilePage() {
       
       // Si nous ne sommes pas en mode édition, sauvegarder immédiatement
       if (!isEditing && profile) {
-        await profileService.updateProfile(user.uid, {
-          ...profile,
+        await updateUserProfile(user.id, {
           image: downloadURL
         });
         
-        setProfile(prev => prev ? {
+        setProfile((prev: IProfile | null) => prev ? {
           ...prev,
           image: downloadURL
         } : null);
@@ -173,7 +163,7 @@ export default function ProfilePage() {
         biographie: tempProfile.biographie || ''
       };
       
-      await profileService.updateProfile(user.uid, updatedProfile);
+      await updateUserProfile(user.id, updatedProfile);
       setProfile(updatedProfile);
       setIsEditing(false);
       Alert.alert("Succès", "Vos modifications ont été enregistrées.");
@@ -246,7 +236,12 @@ export default function ProfilePage() {
     }
     
     try {
-      await profileService.addExperience(user.uid, newExperience);
+      // Pour Supabase, nous devons d'abord récupérer le profil, ajouter l'expérience et mettre à jour
+      const currentProfile = await getUserProfile(user.id);
+      if (currentProfile) {
+        const updatedExperiences = [...(currentProfile.experiences || []), newExperience];
+        await updateUserProfile(user.id, { experiences: updatedExperiences });
+      }
       
       // Mettre à jour l'état local
       setTempProfile(prev => {
@@ -284,7 +279,12 @@ export default function ProfilePage() {
     }
     
     try {
-      await profileService.addCompetence(user.uid, newCompetence);
+      // Pour Supabase, nous devons d'abord récupérer le profil, ajouter la compétence et mettre à jour
+      const currentProfile = await getUserProfile(user.id);
+      if (currentProfile) {
+        const updatedCompetences = [...(currentProfile.competences || []), newCompetence];
+        await updateUserProfile(user.id, { competences: updatedCompetences });
+      }
       
       // Mettre à jour l'état local
       setTempProfile(prev => {
@@ -323,7 +323,13 @@ export default function ProfilePage() {
           text: "Supprimer", 
           onPress: async () => {
             try {
-              await profileService.removeExperience(user.uid, index);
+              // Pour Supabase, nous devons d'abord récupérer le profil, supprimer l'expérience et mettre à jour
+      const currentProfile = await getUserProfile(user.id);
+      if (currentProfile) {
+        const updatedExperiences = [...(currentProfile.experiences || [])];
+        updatedExperiences.splice(index, 1);
+        await updateUserProfile(user.id, { experiences: updatedExperiences });
+      }
               
               // Mettre à jour l'état local
               setTempProfile(prev => {
@@ -425,7 +431,11 @@ export default function ProfilePage() {
           <View style={styles.header}>
             <View style={styles.profileImageContainer}>
               <Image 
-                source={{ uri: isEditing ? tempProfile.image : profile.image }} 
+                source={
+              (isEditing ? tempProfile.image : profile.image) 
+                ? { uri: isEditing ? tempProfile.image : profile.image }
+                : { uri: 'https://via.placeholder.com/120x120.png?text=Photo' }
+            } 
                 style={styles.profileImage} 
               />
               {isEditing && (

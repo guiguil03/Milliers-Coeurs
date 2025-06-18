@@ -29,7 +29,7 @@ const Header = () => {
   useEffect(() => {
     if (user) {
       // Récupérer et formater le nom d'affichage de l'utilisateur
-      const displayName = user.displayName || user.email?.split('@')[0] || '';
+      const displayName = user.user_metadata?.display_name || user.email || user.email?.split('@')[0] || '';
       setUserDisplayName(displayName);
     } else {
       setUserDisplayName(null);

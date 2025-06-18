@@ -13,8 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthContext } from '../contexts/AuthContext';
-import { reservationService } from '../services/reservationService';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import { reservationSupabaseService } from '../services/reservationSupabaseService';
+import { annonceSupabaseService, Annonce } from '../services/annonceSupabaseService';
 import { Reservation, ReservationStatut } from '../models/Reservation';
 
 // Type pour la navigation
@@ -66,10 +66,10 @@ const MesReservationsScreen: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log("📱 Chargement réservations pour:", user.uid);
+      console.log("📱 Chargement réservations pour:", user.id);
       
       // Récupérer les réservations
-      const userReservations = await reservationService.getReservationsByUser(user.uid);
+      const userReservations = await reservationSupabaseService.getReservationsByUser(user.id);
       console.log("📱 Réservations trouvées:", userReservations.length);
       
       if (userReservations.length === 0) {
@@ -82,7 +82,7 @@ const MesReservationsScreen: React.FC = () => {
       const reservationsWithAnnonces = await Promise.all(
         userReservations.map(async (reservation) => {
           try {
-            const annonce = await annonceService.getAnnonceById(reservation.annonceId);
+            const annonce = await annonceSupabaseService.getAnnonceById(reservation.annonceId);
             return { 
               ...reservation, 
               annonce: annonce || {
@@ -162,7 +162,7 @@ const MesReservationsScreen: React.FC = () => {
       console.log('🟡 [CANCEL] Début de l\'annulation');
       setLoading(true);
       
-      await reservationService.updateReservationStatus(
+      await reservationSupabaseService.updateReservationStatus(
         reservation.id!, 
         ReservationStatut.Annulee
       );

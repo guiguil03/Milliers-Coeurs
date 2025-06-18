@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Alert, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Annonce } from '../services/annonceFirebaseService';
+import { Annonce } from '../services/annonceSupabaseService';
 import { useAuthContext } from '../contexts/AuthContext';
-import { annonceService } from '../services/annonceFirebaseService';
+import { annonceSupabaseService } from '../services/annonceSupabaseService';
 import { useRouter } from 'expo-router';
-import { reservationService } from '../services/reservationService';
+import { reservationSupabaseService } from '../services/reservationSupabaseService';
 import { useAnnonce } from '../hooks/useAnnonce';
 
 // Propriétés nécessaires pour le composant
@@ -42,7 +42,7 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
   } = annonce;
   
   // Vérifier si l'utilisateur connecté est le propriétaire de l'annonce
-  const isOwner = user && utilisateurId && user.uid === utilisateurId;
+  const isOwner = user && utilisateurId && user.id === utilisateurId;
   
   // Formater la date de création pour afficher la date réelle
   const formatDate = (timestamp: any) => {
@@ -96,7 +96,7 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
           onPress: async () => {
             try {
               if (annonce.id) {
-                await annonceService.deleteAnnonce(annonce.id);
+                await annonceSupabaseService.deleteAnnonce(annonce.id);
                 if (onDelete) {
                   onDelete();
                 }
@@ -115,7 +115,7 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
   // Fonction pour gérer la réservation
   const handleReservation = async () => {
     console.log('🚀 [RESERVATION] === RÉSERVATION DIRECTE ===');
-    console.log('🚀 [RESERVATION] User:', user?.uid, user?.email);
+    console.log('🚀 [RESERVATION] User:', user?.id, user?.email);
     console.log('🚀 [RESERVATION] AnnonceId:', annonceId);
     console.log('🚀 [RESERVATION] IsOwner:', isOwner);
 
@@ -144,7 +144,7 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
 
       // Vérification anti-double réservation
       console.log('🔍 [RESERVATION] Vérification réservation existante...');
-      const hasExisting = await reservationService.hasExistingReservation(user.uid, annonceId);
+      const hasExisting = await reservationSupabaseService.hasExistingReservation(user.id, annonceId);
       console.log('🔍 [RESERVATION] Résultat vérification:', hasExisting);
 
       if (hasExisting) {
@@ -157,8 +157,8 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
       // Données de réservation
       const reservationData = {
         annonceId: annonceId,
-        benevoleId: user.uid,
-        benevoleName: user.displayName || user.email || 'Bénévole',
+        benevoleId: user.id,
+        benevoleName: user.user_metadata?.display_name || user.email || user.email || 'Bénévole',
         benevoleEmail: user.email || '',
         message: `Réservation pour: ${description || 'Mission'}`
       };
@@ -167,17 +167,17 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
 
       // Création de la réservation DIRECTE
       console.log('🚀 [RESERVATION] Création réservation...');
-      const reservationId = await reservationService.createReservation(reservationData);
+      const reservationId = await reservationSupabaseService.createReservation(reservationData);
       console.log('🎉 [RESERVATION] Réservation créée! ID:', reservationId);
 
       // Vérification immédiate
       console.log('🔍 [RESERVATION] Vérification immédiate...');
-      const verification = await reservationService.getReservationById(reservationId);
+      const verification = await reservationSupabaseService.getReservationById(reservationId);
       console.log('🔍 [RESERVATION] Vérification:', verification ? 'TROUVÉE' : 'NON TROUVÉE');
 
       // Test récupération liste utilisateur
       console.log('📋 [RESERVATION] Test récupération liste utilisateur...');
-      const userReservations = await reservationService.getReservationsByUser(user.uid);
+      const userReservations = await reservationSupabaseService.getReservationsByUser(user.id);
       console.log('📋 [RESERVATION] Réservations utilisateur:', userReservations.length);
 
       // Succès - utiliser alert simple qui fonctionne partout
@@ -256,7 +256,14 @@ const AnnonceItem: React.FC<AnnonceItemProps> = ({
         <View style={styles.orgInfo}>
           <View style={[styles.logo, { backgroundColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' }]}>
             {logo ? (
-              <Image source={{ uri: logo }} style={styles.logo} />
+              <Image 
+          source={
+            logo 
+              ? { uri: logo }
+              : { uri: 'https://via.placeholder.com/50x50.png?text=Logo' }
+          } 
+          style={styles.logo} 
+        />
             ) : (
               <Ionicons name="person" size={24} color="#999" />
             )}

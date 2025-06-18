@@ -2,12 +2,12 @@ import { StyleSheet, ScrollView, View, Text, TouchableOpacity, ActivityIndicator
 import React, { useState, useEffect } from 'react';
 import { Link, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import { annonceSupabaseService, Annonce } from '../services/annonceSupabaseService';
 import AnnonceItem from '../components/AnnonceItem';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useAuth } from '../hooks/useAuth';
 import { router } from 'expo-router';
-import { reservationService } from '../services/reservationService';
+import { reservationSupabaseService } from '../services/reservationSupabaseService';
 
 export default function HomePage() {
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
@@ -26,7 +26,7 @@ export default function HomePage() {
     try {
       setLoading(true);
       setError(null);
-      const recentAnnonces = await annonceService.getRecentAnnonces(5);
+      const recentAnnonces = await annonceSupabaseService.getRecentAnnonces(5);
       setAnnonces(recentAnnonces);
     } catch (err) {
       console.error('Erreur lors du chargement des annonces:', err);
@@ -54,40 +54,40 @@ export default function HomePage() {
       const annonceTest = annonces[0];
       
       console.log("🧪 === TEST COMPLET RÉSERVATION ===");
-      console.log("🧪 User:", authUser.uid, authUser.email);
+      console.log("🧪 User:", authUser.id, authUser.email);
       console.log("🧪 Annonce:", annonceTest.id, annonceTest.description);
       
       // 1. Test vérification réservation existante
       console.log("🧪 1. Test hasExistingReservation...");
-      const hasExisting = await reservationService.hasExistingReservation(authUser.uid, annonceTest.id!);
+      const hasExisting = await reservationSupabaseService.hasExistingReservation(authUser.id, annonceTest.id!);
       console.log("🧪 1. Résultat:", hasExisting);
       
       // 2. Test création réservation
       console.log("🧪 2. Test createReservation...");
       const reservationData = {
         annonceId: annonceTest.id!,
-        benevoleId: authUser.uid,
-        benevoleName: authUser.displayName || authUser.email || 'Testeur',
+        benevoleId: authUser.id,
+        benevoleName: authUser.user_metadata?.display_name || authUser.email || authUser.email || 'Testeur',
         benevoleEmail: authUser.email || '',
         message: `TEST AUTOMATIQUE - ${new Date().toLocaleString()}`
       };
       
-      const reservationId = await reservationService.createReservation(reservationData);
+      const reservationId = await reservationSupabaseService.createReservation(reservationData);
       console.log("🧪 2. Réservation créée:", reservationId);
       
       // 3. Test récupération par ID
       console.log("🧪 3. Test getReservationById...");
-      const reservationById = await reservationService.getReservationById(reservationId);
+      const reservationById = await reservationSupabaseService.getReservationById(reservationId);
       console.log("🧪 3. Réservation récupérée:", reservationById ? "OUI" : "NON");
       
       // 4. Test récupération liste utilisateur
       console.log("🧪 4. Test getReservationsByUser...");
-      const userReservations = await reservationService.getReservationsByUser(authUser.uid);
+      const userReservations = await reservationSupabaseService.getReservationsByUser(authUser.id);
       console.log("🧪 4. Nombre de réservations:", userReservations.length);
       
       // 5. Test nouvelle vérification (doit être true maintenant)
       console.log("🧪 5. Re-test hasExistingReservation...");
-      const hasExistingAfter = await reservationService.hasExistingReservation(authUser.uid, annonceTest.id!);
+      const hasExistingAfter = await reservationSupabaseService.hasExistingReservation(authUser.id, annonceTest.id!);
       console.log("🧪 5. Résultat après création:", hasExistingAfter);
       
       console.log("🧪 === FIN TEST - TOUS LES TESTS RÉUSSIS ===");

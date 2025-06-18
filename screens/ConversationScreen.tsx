@@ -23,7 +23,7 @@ import {
   getCurrentUserId,
   deleteMessage,
   clearConversationMessages
-} from '../services/messageService';
+} from '../services/messageSupabaseService';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -52,7 +52,7 @@ const ConversationScreen = () => {
         setMessages(conversationMessages);
         
         // Marquer les messages comme lus
-        await markMessagesAsRead(id, user.uid);
+        await markMessagesAsRead(id, user.id);
         
         // Charger le nom de l'autre utilisateur
         if (userId) {
@@ -84,7 +84,7 @@ const ConversationScreen = () => {
       
       // Créer le message
       const messageData: Omit<IMessage, 'id'> = {
-        sender_id: user.uid,
+        sender_id: user.id,
         receiver_id: userId,
         content: newMessage.trim(),
         timestamp: new Date().getTime(),
@@ -182,7 +182,7 @@ const ConversationScreen = () => {
   };
 
   const renderMessageItem = ({ item, index }: { item: IMessage; index: number }) => {
-    const isCurrentUser = item.sender_id === user?.uid;
+    const isCurrentUser = item.sender_id === user?.id;
     const showDate = index === 0 || 
       formatMessageDate(item.timestamp) !== formatMessageDate(messages[index - 1].timestamp);
     

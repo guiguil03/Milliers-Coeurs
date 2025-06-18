@@ -47,7 +47,7 @@
     "expo-system-ui": "~5.0.8",
     "expo-web-browser": "~14.1.6",
     "express": "^4.19.2",
-    "firebase": "^10.12.2",
+    "@supabase/supabase-js": "^2.39.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.5",
     "pg-hstore": "^2.3.4",

@@ -19,7 +19,14 @@ export const FeaturedCard: React.FC<FeaturedCardProps> = ({
 }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
-      <Image source={{ uri: image }} style={styles.image} />
+      <Image 
+        source={
+          image 
+            ? { uri: image }
+            : { uri: 'https://via.placeholder.com/300x200.png?text=Image' }
+        } 
+        style={styles.image} 
+      />
       <ThemedView style={styles.content}>
         <ThemedText style={styles.title}>{title}</ThemedText>
         <ThemedText style={styles.description}>{description}</ThemedText>

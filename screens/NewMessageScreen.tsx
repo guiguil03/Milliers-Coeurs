@@ -14,8 +14,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../contexts/AuthContext';
-import { annonceService } from '../services/annonceFirebaseService';
-import { sendMessageWithAutoConversation } from '../services/messageService';
+import { annonceSupabaseService } from '../services/annonceSupabaseService';
+import { sendMessageWithAutoConversation } from '../services/messageSupabaseService';
 
 const NewMessageScreen = () => {
   const { annonceId } = useLocalSearchParams<{ annonceId: string }>();
@@ -41,7 +41,7 @@ const NewMessageScreen = () => {
         setLoading(true);
         setError(null);
         
-        const annonceDetails = await annonceService.getAnnonceById(annonceId);
+        const annonceDetails = await annonceSupabaseService.getAnnonceById(annonceId);
         if (!annonceDetails) {
           setError('Annonce non trouvée');
           return;
@@ -75,7 +75,7 @@ const NewMessageScreen = () => {
       
       // Envoyer le message
       await sendMessageWithAutoConversation(
-        user.uid,
+        user.id,
         receiverId,
         message.trim()
       );

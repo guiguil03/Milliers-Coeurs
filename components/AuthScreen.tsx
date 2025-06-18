@@ -11,7 +11,7 @@ import {
   ScrollView
 } from 'react-native';
 import { useAuthContext } from '../contexts/AuthContext';
-import { getErrorMessage } from '../services/authService';
+import { getErrorMessage } from '../services/authSupabaseService';
 import { userDataService } from '../services/userDataService';
 
 interface AuthScreenProps {
@@ -58,7 +58,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
       if (isLogin) {
         console.log("[AuthScreen] Tentative de connexion avec l'email:", email);
         const user = await login(email, password);
-        console.log("[AuthScreen] Connexion réussie, UID:", user?.uid);
+        console.log("[AuthScreen] Connexion réussie, UID:", user?.id);
       } else {
         const displayName = firstName.trim();
         console.log("[AuthScreen] Tentative d'inscription avec email:", email, "et prénom:", displayName, "type:", userType);
@@ -70,10 +70,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ visible, onClose }) => {
           userType
         });
         
-        if (user && user.uid) {
-          console.log("[AuthScreen] Enregistrement local du prénom pour l'utilisateur:", user.uid);
-          await userDataService.saveDisplayName(user.uid, displayName);
-          await userDataService.saveUserType(user.uid, userType);
+        if (user && user.id) {
+          console.log("[AuthScreen] Enregistrement local du prénom pour l'utilisateur:", user.id);
+          await userDataService.saveDisplayName(user.id, displayName);
+          await userDataService.saveUserType(user.id, userType);
         }
         
         console.log("[AuthScreen] Inscription réussie");

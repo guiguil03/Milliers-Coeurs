@@ -16,9 +16,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import { annonceSupabaseService, Annonce } from '../services/annonceSupabaseService';
 import { useAuthContext } from '../contexts/AuthContext';
-import { reservationService } from '../services/reservationService';
+import { reservationSupabaseService } from '../services/reservationSupabaseService';
 import { ReservationStatut } from '../models/Reservation';
 
 // Définir les types pour la navigation
@@ -62,7 +62,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
       setLoading(true);
       setError(null);
       
-      const data = await annonceService.getAnnonceById(annonceId);
+      const data = await annonceSupabaseService.getAnnonceById(annonceId);
       setAnnonce(data);
     } catch (error) {
       console.error('Erreur lors du chargement des détails de l\'annonce:', error);
@@ -76,7 +76,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
     if (!user) return;
     
     try {
-      const hasReservation = await reservationService.hasExistingReservation(user.uid, annonceId);
+      const hasReservation = await reservationSupabaseService.hasExistingReservation(user.id, annonceId);
       setHasReserved(hasReservation);
     } catch (error) {
       console.error('Erreur lors de la vérification du statut de réservation:', error);
@@ -123,7 +123,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
           onPress: async () => {
             try {
               setLoading(true);
-              await annonceService.deleteAnnonce(annonceId);
+              await annonceSupabaseService.deleteAnnonce(annonceId);
               Alert.alert("Succès", "L'annonce a été supprimée avec succès.");
               navigation.goBack();
             } catch (error) {
@@ -161,7 +161,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
       setIsReservationLoading(true);
       
       // Vérifier si l'utilisateur a déjà une réservation pour cette annonce
-      const hasExistingReservation = await reservationService.hasExistingReservation(user.uid, annonceId);
+      const hasExistingReservation = await reservationSupabaseService.hasExistingReservation(user.id, annonceId);
       if (hasExistingReservation) {
         Alert.alert(
           "Réservation impossible",
@@ -173,10 +173,10 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
       }
       
       // Créer la réservation
-      await reservationService.createReservation({
+      await reservationSupabaseService.createReservation({
         annonceId: annonceId,
-        benevoleId: user.uid,
-        benevoleName: user.displayName || '',
+        benevoleId: user.id,
+        benevoleName: user.user_metadata?.display_name || user.email || '',
         benevoleEmail: user.email || '',
         message: reservationMessage.trim() || ''
       });
@@ -236,13 +236,13 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
               setLoading(true);
               
               // Récupérer toutes les réservations de l'utilisateur pour cette annonce
-              const reservations = await reservationService.getReservationsByBenevole(user.uid);
+              const reservations = await reservationSupabaseService.getReservationsByBenevole(user.id);
               const reservation = reservations.find(r => r.annonceId === annonceId && 
                 (r.statut === ReservationStatut.EnAttente || r.statut === ReservationStatut.Confirmee));
               
               if (reservation && reservation.id) {
                 // Mettre à jour le statut de la réservation
-                await reservationService.updateReservationStatus(
+                await reservationSupabaseService.updateReservationStatus(
                   reservation.id, 
                   ReservationStatut.Annulee
                 );
@@ -299,7 +299,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
   }
 
   // Vérifier si l'utilisateur est le créateur de l'annonce
-  const isOwner = user && user.uid === annonce.utilisateurId;
+  const isOwner = user && user.id === annonce.utilisateurId;
 
   return (
     <ScrollView style={styles.container}>

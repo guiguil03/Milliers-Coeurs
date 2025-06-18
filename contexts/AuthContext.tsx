@@ -1,8 +1,8 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { User } from 'firebase/auth';
+import { type User } from '../config/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { IProfile } from '../services/profileService';
-import { UserData } from '../services/authService';
+import { IProfile } from '../services/profileSupabaseService';
+import { UserData } from '../services/authSupabaseService';
 
 interface AuthContextType {
   user: User | null;

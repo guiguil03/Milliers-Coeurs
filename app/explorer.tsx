@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Activi
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { MISSION_CATEGORIES } from '../constants/categories';
-import { annonceService } from '../services/annonceFirebaseService';
+import { annonceSupabaseService } from '../services/annonceSupabaseService';
 
 export default function ExplorerPage() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export default function ExplorerPage() {
       }
 
       // Effectuer la  
-      const results = await annonceService.searchAnnonces(searchFilters);
+      const results = await annonceSupabaseService.searchAnnonces(searchFilters);
       
       // Naviguer vers la page des résultats avec les paramètres de recherche
       router.push({
@@ -89,7 +89,7 @@ export default function ExplorerPage() {
           headerBackTitleVisible: false,
         }} 
       />
-      
+      r
       <ScrollView style={styles.scrollContainer}>
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>Trouver une mission</Text>

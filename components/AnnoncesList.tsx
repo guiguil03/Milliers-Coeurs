@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
+import { annonceSupabaseService, Annonce } from '../services/annonceSupabaseService';
 import { Ionicons } from '@expo/vector-icons';
 import AnnonceItem from './AnnonceItem';
 
@@ -31,15 +31,15 @@ const AnnoncesList: React.FC<Props> = ({ filter }) => {
       let result: Annonce[] = [];
 
       if (filter?.search) {
-        result = await annonceService.searchAnnonces({
+        result = await annonceSupabaseService.searchAnnonces({
           location: filter.search.location,
           categorie: filter.search.categorie,
         });
-      } else if (filter?.location) {          result = await annonceService.searchAnnoncesByLocation(filter.location);
+      } else if (filter?.location) {          result = await annonceSupabaseService.searchAnnoncesByLocation(filter.location);
       } else if (filter?.categorie) {
-        result = await annonceService.searchAnnoncesByCategory(filter.categorie);
+        result = await annonceSupabaseService.searchAnnoncesByCategory(filter.categorie);
       } else {
-        result = await annonceService.getAnnonces();
+        result = await annonceSupabaseService.getAnnonces();
       }
       
       setAnnonces(result);

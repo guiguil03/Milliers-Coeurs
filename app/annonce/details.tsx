@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { annonceService, Annonce } from '../../services/annonceFirebaseService';
+import { annonceSupabaseService, Annonce } from '../../services/annonceSupabaseService';
 import { getCategoryById, getCategoryByName } from '../../constants/categories';
 import { useAuthContext } from '../../contexts/AuthContext';
-import { reservationService } from '../../services/reservationService';
+import { reservationSupabaseService } from '../../services/reservationSupabaseService';
 import { ReservationStatut, Reservation } from '../../models/Reservation';
 import { useAnnonce, AnnonceWithFavori } from '../../hooks/useAnnonce';
 
@@ -36,8 +36,8 @@ export default function AnnonceDetailsScreen() {
     const checkReservationStatus = async () => {
       if (user && id) {
         try {
-          console.log('🔍 Vérification réservation pour:', user.uid, 'annonce:', id);
-          const reserved = await reservationService.hasExistingReservation(user.uid, id as string);
+          console.log('🔍 Vérification réservation pour:', user.id, 'annonce:', id);
+          const reserved = await reservationSupabaseService.hasExistingReservation(user.id, id as string);
           console.log('🔍 Déjà réservé:', reserved);
           setHasReserved(reserved);
         } catch (error) {
@@ -84,7 +84,7 @@ export default function AnnonceDetailsScreen() {
     }
 
     // Vérifier si l'annonce n'est pas celle de l'utilisateur
-    const isOwner = annonce && annonce.utilisateurId === user.uid;
+    const isOwner = annonce && annonce.user_id === user.id;
     if (isOwner) {
       alert("❌ Vous ne pouvez pas réserver votre propre mission !");
       return;
@@ -96,12 +96,12 @@ export default function AnnonceDetailsScreen() {
         try {
           setIsReservationLoading(true);
           // Récupérer la réservation existante
-          const reservations = await reservationService.getReservationsByUser(user.uid);
+          const reservations = await reservationSupabaseService.getReservationsByUser(user.id);
           const reservation = reservations.find((r: Reservation) => r.annonceId === id);
           
           if (reservation && reservation.id) {
             // Annuler la réservation
-            await reservationService.updateReservationStatus(reservation.id, ReservationStatut.Annulee);
+            await reservationSupabaseService.updateReservationStatus(reservation.id, ReservationStatut.Annulee);
             setHasReserved(false);
             alert("✅ Réservation annulée avec succès.");
           }
@@ -122,13 +122,13 @@ export default function AnnonceDetailsScreen() {
       
       const reservationData = {
         annonceId: id as string,
-        benevoleId: user.uid,
-        benevoleName: user.displayName || user.email || 'Bénévole',
+        benevoleId: user.id,
+        benevoleName: user.user_metadata?.display_name || user.email || user.email || 'Bénévole',
         benevoleEmail: user.email || '',
         message: `Réservation pour ${annonce?.titre || 'cette mission'}`
       };
       
-      const reservationId = await reservationService.createReservation(reservationData);
+      const reservationId = await reservationSupabaseService.createReservation(reservationData);
       console.log("✅ [DETAILS] Réservation créée avec ID:", reservationId);
       
       // ✅ CONFIRMATION
@@ -150,9 +150,15 @@ export default function AnnonceDetailsScreen() {
     }
   };
 
-  const handleContact = () => {
+  const handleContact = async () => {
+    console.log("🔍 [CONTACT] Début handleContact");
+    console.log("🔍 [CONTACT] User:", user);
+    console.log("🔍 [CONTACT] Annonce:", annonce);
+    console.log("🔍 [CONTACT] Annonce user_id:", annonce?.user_id);
+
     // Vérifier si l'utilisateur est connecté
     if (!user) {
+      console.log("❌ [CONTACT] Utilisateur non connecté");
       Alert.alert(
         "Connexion requise", 
         "Vous devez vous connecter pour contacter l'organisateur.",
@@ -165,13 +171,49 @@ export default function AnnonceDetailsScreen() {
     }
 
     // Vérifier si l'annonce a un utilisateur associé
-    if (!annonce || !annonce.utilisateurId) {
+    if (!annonce || !annonce.user_id) {
+      console.log("❌ [CONTACT] Annonce ou user_id manquant");
+      console.log("❌ [CONTACT] Annonce présente:", !!annonce);
+      console.log("❌ [CONTACT] user_id présent:", !!annonce?.user_id);
       Alert.alert("Erreur", "Impossible de contacter l'organisateur de cette annonce.");
       return;
     }
 
-    // Rediriger vers la page de messagerie avec l'ID de l'annonce
-    router.push(`/messages/new?annonceId=${id}`);
+    // Vérifier qu'on ne se contacte pas soi-même
+    if (user.id === annonce.user_id) {
+      console.log("❌ [CONTACT] Tentative de se contacter soi-même");
+      Alert.alert("Information", "Vous ne pouvez pas vous contacter vous-même.");
+      return;
+    }
+
+    try {
+      console.log("📤 [CONTACT] Tentative d'envoi message");
+      console.log("📤 [CONTACT] Sender ID:", user.id);
+      console.log("📤 [CONTACT] Receiver ID:", annonce.user_id);
+
+      // Importer le service de messagerie
+      const { sendMessageWithAutoConversation } = await import('../../services/messageSupabaseService');
+      
+      // Créer la conversation et envoyer le premier message
+      await sendMessageWithAutoConversation(
+        user.id,
+        annonce.user_id,
+        `Bonjour ! Je suis intéressé(e) par votre annonce "${annonce.titre}". Pouvez-vous me donner plus d'informations ?`
+      );
+
+      console.log("✅ [CONTACT] Message envoyé avec succès");
+      Alert.alert(
+        "Message envoyé !",
+        "Votre message a été envoyé à l'organisateur. Vous pouvez consulter la conversation dans vos messages.",
+        [
+          { text: "Voir mes messages", onPress: () => router.push("/messages") },
+          { text: "OK", style: "cancel" }
+        ]
+      );
+    } catch (error) {
+      console.error("❌ [CONTACT] Erreur lors de l'envoi du message:", error);
+      Alert.alert("Erreur", `Impossible d'envoyer le message. Détails: ${error}`);
+    }
   };
 
   // Fonction pour gérer l'ajout/suppression des favoris
@@ -214,7 +256,7 @@ export default function AnnonceDetailsScreen() {
 
   // Fonction pour supprimer l'annonce
   const handleDelete = () => {
-    if (!user || !annonce || !annonce.utilisateurId || user.uid !== annonce.utilisateurId) {
+    if (!user || !annonce || !annonce.utilisateurId || user.id !== annonce.utilisateurId) {
       return;
     }
     
@@ -229,7 +271,7 @@ export default function AnnonceDetailsScreen() {
           onPress: async () => {
             try {
               if (annonce.id) {
-                await annonceService.deleteAnnonce(annonce.id);
+                await annonceSupabaseService.deleteAnnonce(annonce.id);
                 Alert.alert(
                   "Succès", 
                   "L'annonce a été supprimée avec succès.",
@@ -247,7 +289,7 @@ export default function AnnonceDetailsScreen() {
   };
 
   // Vérifier si l'utilisateur connecté est le propriétaire de l'annonce
-  const isOwner = user && annonce && annonce.utilisateurId && user.uid === annonce.utilisateurId;
+  const isOwner = user && annonce && annonce.user_id && user.id === annonce.user_id;
 
   if (loading) {
     return (
@@ -318,7 +360,14 @@ export default function AnnonceDetailsScreen() {
         <View style={styles.orgHeader}>
           <View style={styles.logoContainer}>
             {annonce.logo ? (
-              <Image source={{ uri: annonce.logo }} style={styles.logo} />
+              <Image 
+            source={
+              annonce.logo 
+                ? { uri: annonce.logo }
+                : { uri: 'https://via.placeholder.com/50x50.png?text=Logo' }
+            } 
+            style={styles.logo} 
+          />
             ) : (
               <View style={[styles.logo, styles.placeholderLogo]}>
                 <Ionicons name="business" size={30} color="#999" />
@@ -428,17 +477,17 @@ export default function AnnonceDetailsScreen() {
         <TouchableOpacity 
           style={[
             styles.actionButton, 
-            (annonce && annonce.utilisateurId === user?.uid) ? styles.ownerButton : (hasReserved ? styles.cancelButton : styles.reserverButton),
+            (annonce && annonce.utilisateurId === user?.id) ? styles.ownerButton : (hasReserved ? styles.cancelButton : styles.reserverButton),
             isReservationLoading && styles.disabledButton
           ]}
           onPress={handleReservation}
-          disabled={isReservationLoading || (annonce && annonce.utilisateurId === user?.uid)}
+          disabled={isReservationLoading || (annonce && annonce.utilisateurId === user?.id)}
         >
           {isReservationLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              {(annonce && annonce.utilisateurId === user?.uid) ? (
+              {(annonce && annonce.utilisateurId === user?.id) ? (
                 <>
                   <Ionicons name="person" size={22} color="#fff" />
                   <Text style={styles.actionButtonText}>VOTRE MISSION</Text>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Annonce } from '../services/annonceFirebaseService';
+import { Annonce } from '../services/annonceSupabaseService';
 import { AnnonceWithFavori } from '../hooks/useAnnonce';
 import FavoriteButton from './FavoriteButton';
 
@@ -22,7 +22,14 @@ const AnnonceCard: React.FC<AnnonceCardProps> = ({ annonce, onToggleFavorite }) 
     <View style={styles.container}>
       <View style={styles.header}>
         {annonce.logo ? (
-          <Image source={{ uri: annonce.logo }} style={styles.logo} />
+          <Image 
+          source={
+            annonce.logo 
+              ? { uri: annonce.logo }
+              : { uri: 'https://via.placeholder.com/50x50.png?text=Logo' }
+          } 
+          style={styles.logo} 
+        />
         ) : (
           <View style={styles.placeholderLogo}>
             <Ionicons name="briefcase-outline" size={20} color="#666" />

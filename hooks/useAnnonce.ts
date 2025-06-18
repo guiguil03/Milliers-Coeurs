@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import { useAuthContext } from '../contexts/AuthContext';
-import { annonceService, Annonce } from '../services/annonceFirebaseService';
-import { favorisService } from '../services/favorisService';
+import { annonceSupabaseService, Annonce } from '../services/annonceSupabaseService';
+import { favorisSupabaseService } from '../services/favorisSupabaseService';
 
 // Types pour les annonces
 export type AnnonceStatusType = 'active' | 'terminée' | 'annulée';
@@ -59,12 +57,12 @@ export const useAnnonce = () => {
           email: data.contact.email || undefined,
           telephone: data.contact.telephone || undefined
         } : undefined,
-        utilisateurId: user.uid,
+        utilisateurId: user.id,
         statut: 'active' as AnnonceStatusType
       };
 
       // Créer l'annonce avec le service
-      const annonceId = await annonceService.createAnnonce(annonceData);
+      const annonceId = await annonceSupabaseService.createAnnonce(annonceData);
       
       return annonceId;
     } catch (err) {
@@ -90,13 +88,13 @@ export const useAnnonce = () => {
 
     try {
       // Vérifier si l'utilisateur est autorisé à modifier cette annonce
-      const annonce = await annonceService.getAnnonceById(id);
+      const annonce = await annonceSupabaseService.getAnnonceById(id);
       if (!annonce) {
         setError('Annonce introuvable');
         return false;
       }
 
-      if (annonce.utilisateurId !== user.uid) {
+      if (annonce.utilisateurId !== user.id) {
         setError('Vous n\'êtes pas autorisé à modifier cette annonce');
         return false;
       }
@@ -123,7 +121,7 @@ export const useAnnonce = () => {
       }
 
       // Mettre à jour l'annonce
-      await annonceService.updateAnnonce(id, updateData);
+      await annonceSupabaseService.updateAnnonce(id, updateData);
       
       return true;
     } catch (err) {
@@ -149,19 +147,19 @@ export const useAnnonce = () => {
 
     try {
       // Vérifier si l'utilisateur est autorisé à supprimer cette annonce
-      const annonce = await annonceService.getAnnonceById(id);
+      const annonce = await annonceSupabaseService.getAnnonceById(id);
       if (!annonce) {
         setError('Annonce introuvable');
         return false;
       }
 
-      if (annonce.utilisateurId !== user.uid) {
+      if (annonce.utilisateurId !== user.id) {
         setError('Vous n\'êtes pas autorisé à supprimer cette annonce');
         return false;
       }
 
       // Supprimer l'annonce
-      await annonceService.deleteAnnonce(id);
+      await annonceSupabaseService.deleteAnnonce(id);
       
       return true;
     } catch (err) {
@@ -187,7 +185,7 @@ export const useAnnonce = () => {
 
     try {
       // Récupérer les annonces de l'utilisateur
-      const annonces = await annonceService.getAnnoncesByUser(user.uid);
+      const annonces = await annonceSupabaseService.getAnnoncesByUser(user.id);
       return annonces;
     } catch (err) {
       console.error('Erreur lors de la récupération des annonces:', err);
@@ -206,7 +204,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonces = await annonceService.getRecentAnnonces(count);
+      const annonces = await annonceSupabaseService.getRecentAnnonces(count);
       return annonces;
     } catch (err) {
       console.error('Erreur lors de la récupération des annonces récentes:', err);
@@ -225,7 +223,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonces = await annonceService.getAllAnnonces();
+      const annonces = await annonceSupabaseService.getAllAnnonces();
       return annonces;
     } catch (err) {
       console.error('Erreur lors de la récupération des annonces:', err);
@@ -244,7 +242,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonces = await annonceService.getAnnoncesByCategorie(category);
+      const annonces = await annonceSupabaseService.getAnnoncesByCategorie(category);
       return annonces;
     } catch (err) {
       console.error('Erreur lors de la récupération des annonces par catégorie:', err);
@@ -263,7 +261,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonce = await annonceService.getAnnonceById(id);
+      const annonce = await annonceSupabaseService.getAnnonceById(id);
       return annonce;
     } catch (err) {
       console.error('Erreur lors de la récupération de l\'annonce:', err);
@@ -287,7 +285,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      await favorisService.addFavori(user.uid, annonceId);
+      await favorisSupabaseService.addFavori(user.id, annonceId);
       return true;
     } catch (err) {
       console.error('Erreur lors de l\'ajout aux favoris:', err);
@@ -311,7 +309,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      await favorisService.removeFavori(user.uid, annonceId);
+      await favorisSupabaseService.removeFavori(user.id, annonceId);
       return true;
     } catch (err) {
       console.error('Erreur lors de la suppression du favori:', err);
@@ -331,7 +329,7 @@ export const useAnnonce = () => {
     }
 
     try {
-      return await favorisService.isFavori(user.uid, annonceId);
+      return await favorisSupabaseService.isFavori(user.id, annonceId);
     } catch (err) {
       console.error('Erreur lors de la vérification du favori:', err);
       return false;
@@ -351,7 +349,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonces = await favorisService.getFavorisAnnonces(user.uid);
+      const annonces = await favorisSupabaseService.getFavorisAnnonces(user.id);
       // Marquer toutes les annonces comme favorites
       return annonces.map(annonce => ({ ...annonce, isFavori: true }));
     } catch (err) {
@@ -371,7 +369,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonces = await annonceService.getAllAnnonces();
+      const annonces = await annonceSupabaseService.getAllAnnonces();
       
       if (!user) {
         return annonces.map(annonce => ({ ...annonce, isFavori: false }));
@@ -381,7 +379,7 @@ export const useAnnonce = () => {
       const annoncesWithFavori: AnnonceWithFavori[] = [];
       
       for (const annonce of annonces) {
-        const favoriStatus = await favorisService.isFavori(user.uid, annonce.id || '');
+        const favoriStatus = await favorisSupabaseService.isFavori(user.id, annonce.id || '');
         annoncesWithFavori.push({
           ...annonce,
           isFavori: favoriStatus
@@ -406,7 +404,7 @@ export const useAnnonce = () => {
     setError(null);
 
     try {
-      const annonce = await annonceService.getAnnonceById(id);
+      const annonce = await annonceSupabaseService.getAnnonceById(id);
       
       if (!annonce) {
         return null;
@@ -416,7 +414,7 @@ export const useAnnonce = () => {
         return { ...annonce, isFavori: false };
       }
       
-      const favoriStatus = await favorisService.isFavori(user.uid, id);
+      const favoriStatus = await favorisSupabaseService.isFavori(user.id, id);
       
       return {
         ...annonce,

@@ -15,7 +15,7 @@ export default function MesReservationsPage() {
       // Utilisateur non connecté, afficher une alerte ou rediriger
       console.log("Utilisateur non connecté, redirection nécessaire");
     } else {
-      console.log("Utilisateur connecté:", user.uid);
+      console.log("Utilisateur connecté:", user.id);
     }
   }, [user]);
 
