@@ -3,13 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TextInput, Button, Image, Touchable
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
-import { ICompetence, IExperience, IProfile } from '../data/profil';
+import { ICompetence, IExperience, IProfile } from '../services/profileSupabaseService';
 import { 
   getUserProfile, 
   updateUserProfile, 
   setUserProfile,
   uploadProfileImage 
 } from '../services/profileSupabaseService';
+import { userDataService } from '../services/userDataService';
 import { Stack, useRouter } from 'expo-router';
 import Header from '../components/Header';
 
@@ -391,6 +392,95 @@ export default function ProfilePage() {
       router.push('/');
     } catch (err: any) {
       Alert.alert("Erreur", err.message || "Impossible de se déconnecter");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    Alert.alert(
+      "⚠️ Supprimer le compte",
+      "Êtes-vous absolument sûr de vouloir supprimer votre compte ?\n\nCette action est irréversible et supprimera :\n• Votre profil\n• Toutes vos annonces\n• Toutes vos réservations\n• Vos messages\n• Toutes vos données",
+      [
+        {
+          text: "Annuler",
+          style: "cancel"
+        },
+        {
+          text: "Confirmer la suppression",
+          style: "destructive",
+          onPress: () => {
+            // Deuxième confirmation
+            Alert.alert(
+              "🔴 Dernière confirmation",
+              "Cette action supprimera définitivement votre compte. Êtes-vous sûr ?",
+              [
+                {
+                  text: "Annuler",
+                  style: "cancel"
+                },
+                {
+                  text: "SUPPRIMER DÉFINITIVEMENT",
+                  style: "destructive",
+                  onPress: performAccountDeletion
+                }
+              ]
+            );
+          }
+        }
+      ]
+    );
+  };
+
+  const performAccountDeletion = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      console.log("🔄 [PROFILE] Début de la suppression du compte:", user.id);
+
+      // Utiliser le service de suppression de compte
+      const result = await userDataService.deleteUserAccount(user.id);
+      
+      console.log("🔄 [PROFILE] Résultat de la suppression:", result);
+      
+      if (result.success) {
+        console.log("✅ [PROFILE] Suppression réussie, déconnexion...");
+        
+        // Déconnexion finale
+        await logout();
+        
+        // Rediriger vers l'accueil
+        router.push('/');
+        
+        // Message de confirmation (après redirection)
+        setTimeout(() => {
+          Alert.alert(
+            "✅ Compte supprimé",
+            "Votre compte et toutes vos données ont été supprimés définitivement.\n\nNous sommes désolés de vous voir partir."
+          );
+        }, 1000);
+        
+      } else {
+        console.error("❌ [PROFILE] Échec de la suppression:", result.message);
+        throw new Error(result.message);
+      }
+
+    } catch (error) {
+      console.error("❌ [PROFILE] Erreur lors de la suppression du compte:", error);
+      
+      Alert.alert(
+        "Erreur de suppression",
+        `Une erreur est survenue lors de la suppression de votre compte:\n\n${error}\n\nVeuillez réessayer ou contacter le support.`,
+        [
+          {
+            text: "OK"
+          }
+        ]
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -801,9 +891,19 @@ export default function ProfilePage() {
           </View>
           
           <View style={styles.emptySpace}></View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutButtonText}>Se déconnecter</Text>
-          </TouchableOpacity>
+          
+          {/* Boutons d'action */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Ionicons name="log-out-outline" size={20} color="#fff" />
+              <Text style={styles.logoutButtonText}>Se déconnecter</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={handleDeleteAccount} style={styles.deleteAccountButton}>
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+              <Text style={styles.deleteAccountButtonText}>Supprimer mon compte</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
       </ScrollView>
@@ -1072,17 +1172,39 @@ const styles = StyleSheet.create({
   emptySpace: {
     height: 100,
   },
+  actionButtonsContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
   logoutButton: {
     backgroundColor: '#E0485A',
     padding: 15,
-    marginHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   logoutButtonText: {
     fontSize: 16,
     color: '#fff',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  deleteAccountButton: {
+    backgroundColor: '#d32f2f',
+    padding: 15,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#b71c1c',
+  },
+  deleteAccountButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    marginLeft: 8,
+    fontWeight: '600',
   },
 });

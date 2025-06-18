@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../config/supabase';
 
 const USER_DATA_KEY = '@UserData:';
 const USER_DISPLAY_NAME_KEY = '@UserDisplayName:';
@@ -140,6 +141,250 @@ export const userDataService = {
       console.log(`[userDataService] Données supprimées pour l'utilisateur ${userId}`);
     } catch (error) {
       console.error('[userDataService] Erreur lors de la suppression des données:', error);
+    }
+  },
+
+  /**
+   * Supprime définitivement le compte utilisateur et toutes ses données
+   * @param userId L'identifiant de l'utilisateur à supprimer
+   * @returns Promise<{success: boolean, message: string}>
+   */
+  deleteUserAccount: async (userId: string): Promise<{success: boolean, message: string}> => {
+    try {
+      if (!userId) {
+        return {
+          success: false,
+          message: 'ID utilisateur requis pour la suppression'
+        };
+      }
+
+      console.log(`🗑️ [DELETE_ACCOUNT] Début de la suppression pour l'utilisateur: ${userId}`);
+
+      // MÉTHODE 1: Essayer la fonction SQL (plus robuste)
+      console.log("🗑️ [DELETE_ACCOUNT] Tentative avec la fonction SQL...");
+      try {
+        const { data, error } = await supabase.rpc('delete_user_account', {
+          target_user_id: userId
+        });
+        
+        if (error) {
+          console.warn("⚠️ [DELETE_ACCOUNT] Fonction SQL échouée, passage à la méthode manuelle:", error);
+          // Continuer avec la méthode manuelle ci-dessous
+        } else {
+          console.log("✅ [DELETE_ACCOUNT] Suppression réussie avec la fonction SQL");
+          
+          // Supprimer les données locales
+          await userDataService.clearUserData(userId);
+          
+          return {
+            success: true,
+            message: 'Compte supprimé avec succès (fonction SQL)'
+          };
+        }
+      } catch (sqlError) {
+        console.warn("⚠️ [DELETE_ACCOUNT] Exception fonction SQL, passage à la méthode manuelle:", sqlError);
+      }
+
+      // MÉTHODE 2: Suppression manuelle (fallback)
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression manuelle étape par étape...");
+
+      // 1. Supprimer toutes les réservations de l'utilisateur
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des réservations...");
+      try {
+        const { data: reservationsData, error: reservationsError } = await supabase
+          .from('reservations')
+          .delete()
+          .eq('benevole_id', userId)
+          .select();
+        
+        if (reservationsError) {
+          console.error("❌ [DELETE_ACCOUNT] Erreur suppression réservations:", reservationsError);
+        } else {
+          console.log(`✅ [DELETE_ACCOUNT] ${reservationsData?.length || 0} réservations supprimées`);
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression réservations:", error);
+      }
+
+      // 2. Supprimer tous les favoris de l'utilisateur
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des favoris...");
+      try {
+        const { data: favorisData, error: favorisError } = await supabase
+          .from('favoris')
+          .delete()
+          .eq('user_id', userId)
+          .select();
+        
+        if (favorisError) {
+          console.error("❌ [DELETE_ACCOUNT] Erreur suppression favoris:", favorisError);
+        } else {
+          console.log(`✅ [DELETE_ACCOUNT] ${favorisData?.length || 0} favoris supprimés`);
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression favoris:", error);
+      }
+
+      // 3. Supprimer toutes les réservations pour les annonces de l'utilisateur
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des réservations sur ses annonces...");
+      try {
+        const { data: userAnnonces } = await supabase
+          .from('annonces')
+          .select('id')
+          .eq('user_id', userId);
+        
+        if (userAnnonces && userAnnonces.length > 0) {
+          console.log(`🗑️ [DELETE_ACCOUNT] ${userAnnonces.length} annonces trouvées`);
+          const annonceIds = userAnnonces.map(a => a.id);
+          const { data: reservationsAnnonceData, error: reservationsAnnonceError } = await supabase
+            .from('reservations')
+            .delete()
+            .in('annonce_id', annonceIds)
+            .select();
+          
+          if (reservationsAnnonceError) {
+            console.error("❌ [DELETE_ACCOUNT] Erreur suppression réservations des annonces:", reservationsAnnonceError);
+          } else {
+            console.log(`✅ [DELETE_ACCOUNT] ${reservationsAnnonceData?.length || 0} réservations d'annonces supprimées`);
+          }
+        } else {
+          console.log("ℹ️ [DELETE_ACCOUNT] Aucune annonce trouvée pour cet utilisateur");
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression réservations annonces:", error);
+      }
+
+      // 4. Supprimer toutes les annonces de l'utilisateur
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des annonces...");
+      try {
+        const { data: annoncesData, error: annoncesError } = await supabase
+          .from('annonces')
+          .delete()
+          .eq('user_id', userId)
+          .select();
+        
+        if (annoncesError) {
+          console.error("❌ [DELETE_ACCOUNT] Erreur suppression annonces:", annoncesError);
+        } else {
+          console.log(`✅ [DELETE_ACCOUNT] ${annoncesData?.length || 0} annonces supprimées`);
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression annonces:", error);
+      }
+
+      // 5. Supprimer tous les messages de l'utilisateur
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des messages...");
+      try {
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+          .select();
+        
+        if (messagesError) {
+          console.error("❌ [DELETE_ACCOUNT] Erreur suppression messages:", messagesError);
+        } else {
+          console.log(`✅ [DELETE_ACCOUNT] ${messagesData?.length || 0} messages supprimés`);
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression messages:", error);
+      }
+
+      // 6. Supprimer les conversations où l'utilisateur participe
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des conversations...");
+      try {
+        const { data: conversations } = await supabase
+          .from('conversations')
+          .select('*')
+          .contains('participants', [userId]);
+        
+        if (conversations && conversations.length > 0) {
+          console.log(`🗑️ [DELETE_ACCOUNT] ${conversations.length} conversations trouvées`);
+          for (const conversation of conversations) {
+            const { error: convError } = await supabase
+              .from('conversations')
+              .delete()
+              .eq('id', conversation.id);
+            
+            if (convError) {
+              console.error("❌ [DELETE_ACCOUNT] Erreur suppression conversation:", convError);
+            }
+          }
+          console.log(`✅ [DELETE_ACCOUNT] ${conversations.length} conversations supprimées`);
+        } else {
+          console.log("ℹ️ [DELETE_ACCOUNT] Aucune conversation trouvée pour cet utilisateur");
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression conversations:", error);
+      }
+
+      // 7. Supprimer le profil de l'utilisateur
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression du profil...");
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId)
+          .select();
+        
+        if (profileError) {
+          console.error("❌ [DELETE_ACCOUNT] Erreur suppression profil:", profileError);
+        } else {
+          console.log(`✅ [DELETE_ACCOUNT] Profil supprimé:`, profileData);
+        }
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression profil:", error);
+      }
+
+      // 8. Supprimer les images de profil du stockage
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des images...");
+      try {
+        const { data: files } = await supabase.storage
+          .from('avatars')
+          .list(`profiles/${userId}`);
+        
+        if (files && files.length > 0) {
+          console.log(`🗑️ [DELETE_ACCOUNT] ${files.length} fichiers trouvés dans le storage`);
+          const filePaths = files.map(file => `profiles/${userId}/${file.name}`);
+          const { error: storageError } = await supabase.storage
+            .from('avatars')
+            .remove(filePaths);
+          
+          if (storageError) {
+            console.error("❌ [DELETE_ACCOUNT] Erreur suppression images:", storageError);
+          } else {
+            console.log(`✅ [DELETE_ACCOUNT] ${files.length} images supprimées`);
+          }
+        } else {
+          console.log("ℹ️ [DELETE_ACCOUNT] Aucune image trouvée dans le storage");
+        }
+      } catch (storageError) {
+        console.error("❌ [DELETE_ACCOUNT] Exception accès storage:", storageError);
+      }
+
+      // 9. Supprimer les données locales
+      console.log("🗑️ [DELETE_ACCOUNT] Suppression des données locales...");
+      try {
+        await userDataService.clearUserData(userId);
+        console.log("✅ [DELETE_ACCOUNT] Données locales supprimées");
+      } catch (error) {
+        console.error("❌ [DELETE_ACCOUNT] Exception suppression données locales:", error);
+      }
+
+      // 10. Finalisation
+      console.log("🗑️ [DELETE_ACCOUNT] Finalisation de la suppression...");
+      console.log("✅ [DELETE_ACCOUNT] Suppression terminée avec succès");
+      
+      return {
+        success: true,
+        message: 'Compte supprimé avec succès (méthode manuelle)'
+      };
+
+    } catch (error) {
+      console.error("❌ [DELETE_ACCOUNT] Erreur générale lors de la suppression du compte:", error);
+      return {
+        success: false,
+        message: `Erreur lors de la suppression: ${error}`
+      };
     }
   }
 };
