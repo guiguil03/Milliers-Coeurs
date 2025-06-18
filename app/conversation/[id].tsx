@@ -17,11 +17,11 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../../contexts/AuthContext';
-import {
-  IMessage,
-  listenToConversationMessages,
+import { 
+  IMessage, 
+  listenToConversationMessages, 
   sendMessage,
-  markMessagesAsRead,
+  markMessagesAsRead, 
   getUserNameById
 } from '../../services/messageSupabaseService';
 
@@ -44,16 +44,16 @@ export default function ConversationPage() {
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const textInputRef = useRef<TextInput>(null);
-
+  
   useEffect(() => {
     if (!id || !user?.id) {
       setError('Paramètres de conversation manquants');
       setLoading(false);
       return;
     }
-
+    
     console.log('📱 [CONVERSATION] Chargement conversation:', { id, userId, name });
-
+      
     // Récupérer le nom du contact si pas fourni
     if (userId && !name) {
       getUserNameById(userId).then(setContactName);
@@ -63,24 +63,24 @@ export default function ConversationPage() {
     const unsubscribe = listenToConversationMessages(id, (newMessages) => {
       console.log('📱 [CONVERSATION] Messages reçus:', newMessages.length);
       setMessages(newMessages);
-      setLoading(false);
-      
-      // Marquer les messages comme lus
+        setLoading(false);
+        
+        // Marquer les messages comme lus
       if (newMessages.some(msg => msg.receiver_id === user.id && !msg.read)) {
         markMessagesAsRead(id, user.id).catch(err => {
-          console.error('Erreur lors du marquage des messages comme lus:', err);
-        });
-      }
+            console.error('Erreur lors du marquage des messages comme lus:', err);
+          });
+        }
 
       // Défiler vers le bas pour voir le dernier message
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    });
-
-    return () => {
-      unsubscribe();
-    };
+      });
+      
+      return () => {
+        unsubscribe();
+      };
   }, [id, user, userId, name]);
 
   const handleSendMessage = async () => {
@@ -112,15 +112,15 @@ export default function ConversationPage() {
       setSending(false);
     }
   };
-
+  
   const handleInputChange = (text: string) => {
     setNewMessage(text);
     // Auto-scroll quand on tape
-    setTimeout(() => {
+      setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
   };
-
+  
   const handleContentSizeChange = (event: any) => {
     const { height } = event.nativeEvent.contentSize;
     setInputHeight(Math.max(40, Math.min(height + 20, 120)));
@@ -133,7 +133,7 @@ export default function ConversationPage() {
       minute: '2-digit' 
     });
   };
-
+  
   const renderMessage = ({ item }: { item: IMessage }) => {
     const isMe = item.sender_id === user?.id;
     
@@ -162,44 +162,44 @@ export default function ConversationPage() {
       </View>
     );
   };
-
+  
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#E0485A" />
-          <Text style={styles.loadingText}>Chargement de la conversation...</Text>
-        </View>
+        <ActivityIndicator size="large" color="#E0485A" />
+        <Text style={styles.loadingText}>Chargement de la conversation...</Text>
+      </View>
       </SafeAreaView>
     );
   }
-
+  
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <Ionicons name="alert-circle" size={48} color="#E0485A" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Retour</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>Retour</Text>
+        </TouchableOpacity>
+      </View>
       </SafeAreaView>
     );
   }
-
+  
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+    <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
+    >
         {/* Header */}
-        <View style={styles.header}>
+      <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#E0485A" />
-          </TouchableOpacity>
+        </TouchableOpacity>
           
           <Image 
             source={{
@@ -208,15 +208,15 @@ export default function ConversationPage() {
             style={styles.contactAvatar} 
           />
           
-          <View style={styles.contactInfo}>
+        <View style={styles.contactInfo}>
             <Text style={styles.contactName}>{contactName}</Text>
             <Text style={styles.onlineStatus}>En ligne</Text>
-          </View>
+      </View>
         </View>
-
+      
         {/* Messages */}
-        <FlatList
-          ref={flatListRef}
+      <FlatList
+        ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
@@ -231,23 +231,23 @@ export default function ConversationPage() {
 
         {/* Input Container with Shadow */}
         <View style={styles.inputWrapper}>
-          <View style={styles.inputContainer}>
+      <View style={styles.inputContainer}>
             <View style={styles.inputBackground}>
-              <TextInput
+        <TextInput
                 ref={textInputRef}
                 style={[styles.textInput, { height: inputHeight }]}
                 value={newMessage}
                 onChangeText={handleInputChange}
                 onContentSizeChange={handleContentSizeChange}
-                placeholder="Tapez votre message..."
+          placeholder="Tapez votre message..."
                 placeholderTextColor="#999"
-                multiline
+          multiline
                 maxLength={1000}
                 returnKeyType="send"
                 blurOnSubmit={false}
                 onSubmitEditing={handleSendMessage}
-              />
-              <TouchableOpacity
+        />
+        <TouchableOpacity 
                 style={[
                   styles.sendButton,
                   (!newMessage.trim() || sending) && styles.sendButtonDisabled
@@ -255,17 +255,17 @@ export default function ConversationPage() {
                 onPress={handleSendMessage}
                 disabled={!newMessage.trim() || sending}
                 activeOpacity={0.7}
-              >
+        >
                 {sending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Ionicons name="send" size={18} color="#fff" />
                 )}
-              </TouchableOpacity>
+        </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+      </View>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

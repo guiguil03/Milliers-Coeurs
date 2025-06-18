@@ -44,5 +44,4 @@ export interface IProfile {
     visibilitePublique: boolean;
   };
   dateCreation?: string;
-  dateModification?: string;
 } 

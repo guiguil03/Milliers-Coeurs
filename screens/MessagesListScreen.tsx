@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  StyleSheet, 
   ActivityIndicator,
   Alert,
   Image,
@@ -50,7 +50,7 @@ export default function MessagesListScreen() {
       // Récupérer toutes les conversations
       const convs = await getConversations(user.id);
       console.log('📱 [MESSAGES] Conversations trouvées:', convs.length);
-
+      
       // Enrichir chaque conversation avec les informations supplémentaires
       const enrichedConversations = await Promise.all(
         convs.map(async (conv) => {
@@ -83,7 +83,7 @@ export default function MessagesListScreen() {
               otherUserName: 'Utilisateur inconnu',
               unreadCount: 0
             };
-          }
+        }
         })
       );
 
@@ -121,12 +121,12 @@ export default function MessagesListScreen() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
-            try {
+    try {
               await deleteConversation(conversationId, user!.id);
               loadConversations(); // Recharger la liste
-            } catch (error) {
+    } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer la conversation');
-            }
+    }
           }
         }
       ]
@@ -142,7 +142,7 @@ export default function MessagesListScreen() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
+    
     if (diffInHours < 1) {
       return `${Math.floor(diffInHours * 60)}min`;
     } else if (diffInHours < 24) {
@@ -243,30 +243,30 @@ export default function MessagesListScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity 
+            <TouchableOpacity 
           style={styles.newMessageButton}
           onPress={() => router.push('/new-conversation')}
-        >
+            >
           <Ionicons name="create-outline" size={24} color="#4f46e5" />
         </TouchableOpacity>
-      </View>
-
+              </View>
+              
       {conversations.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
           <Text style={styles.emptyText}>Aucune conversation</Text>
           <Text style={styles.emptySubtext}>
             Commencez une conversation en contactant une association !
-          </Text>
-        </View>
+                </Text>
+              </View>
       ) : (
         <FlatList
           data={conversations}
           renderItem={renderConversationItem}
           keyExtractor={(item) => item.id}
-          refreshControl={
+        refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
+        }
           contentContainerStyle={styles.listContainer}
         />
       )}

@@ -1,5 +1,17 @@
 import { supabase } from '../config/supabase';
-import { ICompetence, IExperience, IProfile as DataProfile } from '../data/profil';
+
+// Interfaces pour les compétences et expériences compatibles avec l'app
+export interface ICompetence {
+  name: string;
+  level: number; // 1-5
+}
+
+export interface IExperience {
+  title: string;
+  organization: string;
+  date: string;
+  description: string;
+}
 
 export interface IProfile {
   uid: string;
@@ -23,26 +35,7 @@ export interface IProfile {
     visibilitePublique: boolean;
   };
   dateCreation?: string;
-  dateModification?: string;
 }
-
-// Convertir l'objet du format de données au format du service
-const convertToServiceProfile = (profile: DataProfile): IProfile => {
-  return {
-    ...profile,
-    competences: profile.competences || [],
-    experiences: profile.experiences || []
-  };
-};
-
-// Convertir l'objet du format du service au format de données
-const convertToDataProfile = (profile: IProfile): DataProfile => {
-  return {
-    ...profile,
-    competences: profile.competences || [],
-    experiences: profile.experiences || []
-  };
-};
 
 // Convertir un objet Supabase en IProfile
 const convertSupabaseToProfile = (data: any): IProfile => {
@@ -52,11 +45,11 @@ const convertSupabaseToProfile = (data: any): IProfile => {
     nom: data.display_name?.split(' ').slice(1).join(' ') || data.nom || '',
     email: data.email || '',
     image: data.image || data.avatar_url || '',
-    adresse: data.adresse,
-    code_postal: data.code_postal,
-    ville: data.ville,
-    telephone: data.telephone,
-    biographie: data.biographie || data.bio,
+    adresse: data.adresse || '',
+    code_postal: data.code_postal || '',
+    ville: data.ville || '',
+    telephone: data.telephone || '',
+    biographie: data.biographie || data.bio || '',
     competences: data.competences || [],
     experiences: data.experiences || [],
     permis: data.permis || false,
@@ -67,58 +60,8 @@ const convertSupabaseToProfile = (data: any): IProfile => {
       notificationsApp: true,
       visibilitePublique: true
     },
-    dateCreation: data.created_at || '',
-    dateModification: data.dateModification || data.updated_at || ''
+    dateCreation: data.created_at || ''
   };
-};
-
-/**
- * Crée ou remplace un profil utilisateur complet
- */
-export const setUserProfile = async (profile: IProfile): Promise<void> => {
-  try {
-    const now = new Date().toISOString();
-    
-    // Préparer les données pour Supabase
-    const profileData = {
-      id: profile.id,
-      display_name: `${profile.prenom} ${profile.nom}`.trim(),
-      email: profile.email,
-      image: profile.image,
-      avatar_url: profile.image, // Alias pour compatibilité
-      prenom: profile.prenom,
-      nom: profile.nom,
-      adresse: profile.adresse,
-      code_postal: profile.code_postal,
-      ville: profile.ville,
-      telephone: profile.telephone,
-      biographie: profile.biographie,
-      bio: profile.biographie, // Alias pour compatibilité
-      competences: profile.competences,
-      experiences: profile.experiences,
-      permis: profile.permis,
-      vehicule: profile.vehicule,
-      user_type: profile.userType,
-      preferences: profile.preferences,
-      dateModification: now,
-      dateCreation: profile.dateCreation || now
-    };
-    
-    const { error } = await supabase
-      .from('profiles')
-      .upsert(profileData, {
-        onConflict: 'id'
-      });
-    
-    if (error) {
-      throw error;
-    }
-    
-    console.log(`✅ [PROFIL] Profil créé/mis à jour pour l'utilisateur ${profile.id}`);
-  } catch (error) {
-    console.error("❌ [PROFIL] Erreur lors de la mise à jour du profil :", error);
-    throw error;
-  }
 };
 
 /**
@@ -166,7 +109,7 @@ export const updateUserProfile = async (uid: string, profileData: Partial<IProfi
           case 'nom':
             updateData[key] = value;
             // Mettre à jour aussi display_name si on a les deux
-            if (profileData.prenom !== undefined && profileData.nom !== undefined) {
+            if (profileData.prenom && profileData.nom) {
               updateData.display_name = `${profileData.prenom} ${profileData.nom}`.trim();
             }
             break;
@@ -182,13 +125,8 @@ export const updateUserProfile = async (uid: string, profileData: Partial<IProfi
             updateData.avatar_url = value; // Alias
             break;
           case 'uid':
-            // Ne pas inclure uid dans les mises à jour (c'est l'ID primary key)
-            break;
           case 'dateCreation':
-            // Ne pas inclure dateCreation dans les mises à jour
-            break;
-          case 'dateModification':
-            // Ne pas inclure dateModification dans les mises à jour (géré automatiquement)
+            // Ne pas inclure ces champs dans les mises à jour
             break;
           default:
             updateData[key] = value;
@@ -216,29 +154,46 @@ export const updateUserProfile = async (uid: string, profileData: Partial<IProfi
 };
 
 /**
- * Supprime un champ spécifique du profil utilisateur
+ * Crée ou remplace un profil utilisateur complet
  */
-export const removeProfileField = async (uid: string, fieldPath: string): Promise<void> => {
+export const setUserProfile = async (profile: IProfile): Promise<void> => {
   try {
-    const updateData: any = {
-      dateModification: new Date().toISOString()
+    // Préparer les données pour Supabase
+    const profileData = {
+      id: profile.uid,
+      display_name: `${profile.prenom} ${profile.nom}`.trim(),
+      email: profile.email,
+      image: profile.image,
+      avatar_url: profile.image, // Alias pour compatibilité
+      prenom: profile.prenom,
+      nom: profile.nom,
+      adresse: profile.adresse,
+      code_postal: profile.code_postal,
+      ville: profile.ville,
+      telephone: profile.telephone,
+      biographie: profile.biographie,
+      bio: profile.biographie, // Alias pour compatibilité
+      competences: profile.competences,
+      experiences: profile.experiences,
+      permis: profile.permis,
+      vehicule: profile.vehicule,
+      user_type: profile.userType,
+      preferences: profile.preferences
     };
-    
-    // Définir le champ à null pour le supprimer
-    updateData[fieldPath] = null;
     
     const { error } = await supabase
       .from('profiles')
-      .update(updateData)
-      .eq('id', uid);
+      .upsert(profileData, {
+        onConflict: 'id'
+      });
     
     if (error) {
       throw error;
     }
     
-    console.log(`✅ [PROFIL] Champ ${fieldPath} supprimé du profil de l'utilisateur ${uid}`);
+    console.log(`✅ [PROFIL] Profil créé/mis à jour pour l'utilisateur ${profile.uid}`);
   } catch (error) {
-    console.error(`❌ [PROFIL] Erreur lors de la suppression du champ ${fieldPath} :`, error);
+    console.error("❌ [PROFIL] Erreur lors de la mise à jour du profil :", error);
     throw error;
   }
 };
@@ -284,86 +239,81 @@ export const uploadProfileImage = async (uid: string, imageUri: string): Promise
 };
 
 /**
- * Ajoute une compétence au profil utilisateur
+ * Ajoute une compétence au profil
  */
 export const addProfileCompetence = async (uid: string, competence: ICompetence): Promise<void> => {
   try {
     const profile = await getUserProfile(uid);
-    
     if (!profile) {
-      throw new Error("Profil utilisateur non trouvé");
+      throw new Error('Profil introuvable');
     }
     
-    const competences = [...(profile.competences || []), competence];
-    await updateUserProfile(uid, { competences });
+    const newCompetences = [...profile.competences, competence];
+    await updateUserProfile(uid, { competences: newCompetences });
     
     console.log(`✅ [PROFIL] Compétence ajoutée pour l'utilisateur ${uid}`);
   } catch (error) {
-    console.error("❌ [PROFIL] Erreur lors de l'ajout de compétence :", error);
+    console.error("❌ [PROFIL] Erreur lors de l'ajout de la compétence :", error);
     throw error;
   }
 };
 
 /**
- * Supprime une compétence du profil utilisateur
+ * Supprime une compétence du profil
  */
 export const removeProfileCompetence = async (uid: string, competenceName: string): Promise<void> => {
   try {
     const profile = await getUserProfile(uid);
-    
     if (!profile) {
-      throw new Error("Profil utilisateur non trouvé");
+      throw new Error('Profil introuvable');
     }
     
-    const competences = (profile.competences || []).filter(c => c.nom !== competenceName);
-    await updateUserProfile(uid, { competences });
+    const newCompetences = profile.competences.filter(comp => comp.name !== competenceName);
+    await updateUserProfile(uid, { competences: newCompetences });
     
     console.log(`✅ [PROFIL] Compétence supprimée pour l'utilisateur ${uid}`);
   } catch (error) {
-    console.error("❌ [PROFIL] Erreur lors de la suppression de compétence :", error);
+    console.error("❌ [PROFIL] Erreur lors de la suppression de la compétence :", error);
     throw error;
   }
 };
 
 /**
- * Ajoute une expérience au profil utilisateur
+ * Ajoute une expérience au profil
  */
 export const addProfileExperience = async (uid: string, experience: IExperience): Promise<void> => {
   try {
     const profile = await getUserProfile(uid);
-    
     if (!profile) {
-      throw new Error("Profil utilisateur non trouvé");
+      throw new Error('Profil introuvable');
     }
     
-    const experiences = [...(profile.experiences || []), experience];
-    await updateUserProfile(uid, { experiences });
+    const newExperiences = [...profile.experiences, experience];
+    await updateUserProfile(uid, { experiences: newExperiences });
     
     console.log(`✅ [PROFIL] Expérience ajoutée pour l'utilisateur ${uid}`);
   } catch (error) {
-    console.error("❌ [PROFIL] Erreur lors de l'ajout d'expérience :", error);
+    console.error("❌ [PROFIL] Erreur lors de l'ajout de l'expérience :", error);
     throw error;
   }
 };
 
 /**
- * Supprime une expérience du profil utilisateur
+ * Supprime une expérience du profil
  */
 export const removeProfileExperience = async (uid: string, experienceIndex: number): Promise<void> => {
   try {
     const profile = await getUserProfile(uid);
-    
     if (!profile) {
-      throw new Error("Profil utilisateur non trouvé");
+      throw new Error('Profil introuvable');
     }
     
-    const experiences = [...(profile.experiences || [])];
-    experiences.splice(experienceIndex, 1);
-    await updateUserProfile(uid, { experiences });
+    const newExperiences = profile.experiences.filter((_, index) => index !== experienceIndex);
+    await updateUserProfile(uid, { experiences: newExperiences });
     
     console.log(`✅ [PROFIL] Expérience supprimée pour l'utilisateur ${uid}`);
   } catch (error) {
-    console.error("❌ [PROFIL] Erreur lors de la suppression d'expérience :", error);
+    console.error("❌ [PROFIL] Erreur lors de la suppression de l'expérience :", error);
     throw error;
   }
 }; 

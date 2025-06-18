@@ -95,7 +95,7 @@ const MesReservationsScreen: React.FC = () => {
                 categorie: 'Catégorie inconnue',
                 important: '',
                 places: 0,
-                utilisateurId: '',
+                user_id: '',
                 statut: 'active' as const,
                 dateCreation: new Date(),
                 isFavori: false
@@ -115,7 +115,7 @@ const MesReservationsScreen: React.FC = () => {
                 categorie: 'Catégorie inconnue',
                 important: '',
                 places: 0,
-                utilisateurId: '',
+                user_id: '',
                 statut: 'active' as const,
                 dateCreation: new Date(),
                 isFavori: false

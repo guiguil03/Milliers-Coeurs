@@ -9,10 +9,10 @@ const { width } = Dimensions.get('window');
 
 export default function TabLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#E0485A',
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarActiveTintColor: '#E0485A',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -43,37 +43,37 @@ export default function TabLayout() {
         },
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Accueil',
+          }}
+        >
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: 'Accueil',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons 
               name={focused ? 'home' : 'home-outline'} 
               size={focused ? size + 2 : size} 
               color={color} 
             />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explorer',
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="explore"
+            options={{
+              title: 'Explorer',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons 
               name={focused ? 'search' : 'search-outline'} 
               size={focused ? size + 2 : size} 
               color={color} 
             />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="reservations"
-        options={{
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="reservations"
+            options={{
           title: 'Mes missions',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons 
@@ -81,35 +81,35 @@ export default function TabLayout() {
               size={focused ? size + 2 : size} 
               color={color} 
             />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: 'Messages',
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="messages"
+            options={{
+              title: 'Messages',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons 
               name={focused ? 'chatbubble' : 'chatbubble-outline'} 
               size={focused ? size + 2 : size} 
               color={color} 
             />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profil',
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="profile"
+            options={{
+              title: 'Profil',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons 
               name={focused ? 'person' : 'person-outline'} 
               size={focused ? size + 2 : size} 
               color={color} 
             />
-          ),
-        }}
-      />
-    </Tabs>
+              ),
+            }}
+          />
+        </Tabs>
   );
 }

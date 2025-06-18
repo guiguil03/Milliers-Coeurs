@@ -235,10 +235,10 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
             try {
               setLoading(true);
               
-              // Récupérer toutes les réservations de l'utilisateur pour cette annonce
-              const reservations = await reservationSupabaseService.getReservationsByBenevole(user.id);
-              const reservation = reservations.find(r => r.annonceId === annonceId && 
-                (r.statut === ReservationStatut.EnAttente || r.statut === ReservationStatut.Confirmee));
+                        // Récupérer toutes les réservations de l'utilisateur pour cette annonce
+          const reservations = await reservationSupabaseService.getReservationsByUser(user.id);
+          const reservation = reservations.find(r => r.annonceId === annonceId && 
+            (r.statut === ReservationStatut.EnAttente || r.statut === ReservationStatut.Confirmee));
               
               if (reservation && reservation.id) {
                 // Mettre à jour le statut de la réservation
@@ -299,7 +299,7 @@ const AnnonceDetailScreen: React.FC<AnnonceDetailScreenProps> = ({ route, naviga
   }
 
   // Vérifier si l'utilisateur est le créateur de l'annonce
-  const isOwner = user && user.id === annonce.utilisateurId;
+      const isOwner = user && user.id === annonce.user_id;
 
   return (
     <ScrollView style={styles.container}>
