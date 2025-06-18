@@ -11,6 +11,7 @@ dotenv.config({ path: envPath });
 
 module.exports = {
   expo: {
+    owner: "caskodev",
     name: "Milliers de Coeurs",
     slug: "milliers-de-coeurs",
     version: "1.0.0",
