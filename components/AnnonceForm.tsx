@@ -91,12 +91,12 @@ const AnnonceForm: React.FC<AnnonceFormProps> = ({ annonceId, onSuccess, onCance
         description,
         date,
         important,
-        lieu: lieu || null,
-        categorie: categorie || null,
-        logo: logo || null,
-        places: places ? parseInt(places) : null,
-        contact: Object.keys(contact).length > 0 ? contact : null,
-        utilisateurId: user.id
+        lieu: lieu || undefined,
+        categorie: categorie || undefined,
+        logo: logo || undefined,
+        places: places ? parseInt(places) : undefined,
+        contact: Object.keys(contact).length > 0 ? contact : undefined,
+        user_id: user.id  // ✅ Correction: user_id au lieu de utilisateurId
       };
 
       let id;

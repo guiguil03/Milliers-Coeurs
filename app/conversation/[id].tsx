@@ -10,7 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert
+  Alert,
+  SafeAreaView,
+  Dimensions
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,10 +38,12 @@ export default function ConversationPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contactName, setContactName] = useState(name || 'Contact');
+  const [inputHeight, setInputHeight] = useState(40);
   
   const { user } = useAuthContext();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
+  const textInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (!id || !user?.id) {
@@ -95,6 +99,7 @@ export default function ConversationPage() {
 
       await sendMessage(id, user.id, userId, newMessage.trim());
       setNewMessage('');
+      setInputHeight(40); // Reset input height
       
       // Défiler vers le bas après envoi
       setTimeout(() => {
@@ -106,6 +111,19 @@ export default function ConversationPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleInputChange = (text: string) => {
+    setNewMessage(text);
+    // Auto-scroll quand on tape
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const handleContentSizeChange = (event: any) => {
+    const { height } = event.nativeEvent.contentSize;
+    setInputHeight(Math.max(40, Math.min(height + 20, 120)));
   };
 
   const formatTime = (timestamp: string) => {
@@ -147,92 +165,118 @@ export default function ConversationPage() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4f46e5" />
-        <Text style={styles.loadingText}>Chargement de la conversation...</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#E0485A" />
+          <Text style={styles.loadingText}>Chargement de la conversation...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Ionicons name="alert-circle" size={48} color="#ef4444" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Retour</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle" size={48} color="#E0485A" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Retour</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        
-        <Image 
-          source={{
-            uri: `https://api.dicebear.com/7.x/initials/png?seed=${contactName}&backgroundColor=4f46e5`
-          }} 
-          style={styles.contactAvatar} 
-        />
-        
-        <View style={styles.contactInfo}>
-          <Text style={styles.contactName}>{contactName}</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#E0485A" />
+          </TouchableOpacity>
+          
+          <Image 
+            source={{
+              uri: `https://api.dicebear.com/7.x/initials/png?seed=${contactName}&backgroundColor=E0485A`
+            }} 
+            style={styles.contactAvatar} 
+          />
+          
+          <View style={styles.contactInfo}>
+            <Text style={styles.contactName}>{contactName}</Text>
+            <Text style={styles.onlineStatus}>En ligne</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={styles.messagesList}
-        contentContainerStyle={styles.messagesContent}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Input */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Tapez votre message..."
-          multiline
-          maxLength={1000}
+        {/* Messages */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          style={styles.messagesList}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={false}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10
+          }}
         />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!newMessage.trim() || sending) && styles.sendButtonDisabled
-          ]}
-          onPress={handleSendMessage}
-          disabled={!newMessage.trim() || sending}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="send" size={20} color="#fff" />
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+
+        {/* Input Container with Shadow */}
+        <View style={styles.inputWrapper}>
+          <View style={styles.inputContainer}>
+            <View style={styles.inputBackground}>
+              <TextInput
+                ref={textInputRef}
+                style={[styles.textInput, { height: inputHeight }]}
+                value={newMessage}
+                onChangeText={handleInputChange}
+                onContentSizeChange={handleContentSizeChange}
+                placeholder="Tapez votre message..."
+                placeholderTextColor="#999"
+                multiline
+                maxLength={1000}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                onSubmitEditing={handleSendMessage}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  (!newMessage.trim() || sending) && styles.sendButtonDisabled
+                ]}
+                onPress={handleSendMessage}
+                disabled={!newMessage.trim() || sending}
+                activeOpacity={0.7}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#f8f9fa'
+  },
+  flex: {
+    flex: 1
   },
   centered: {
     flex: 1,
@@ -248,12 +292,12 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#ef4444',
+    color: '#E0485A',
     textAlign: 'center'
   },
   backButton: {
     marginTop: 16,
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#E0485A',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8
@@ -266,18 +310,25 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff'
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2
   },
   backBtn: {
-    marginRight: 12
+    marginRight: 12,
+    padding: 4
   },
   contactAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     marginRight: 12
   },
   contactInfo: {
@@ -288,15 +339,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827'
   },
+  onlineStatus: {
+    fontSize: 13,
+    color: '#E0485A',
+    marginTop: 2
+  },
   messagesList: {
     flex: 1,
-    backgroundColor: '#f9fafb'
+    backgroundColor: '#f8f9fa'
   },
   messagesContent: {
-    padding: 16
+    padding: 16,
+    paddingBottom: 8
   },
   messageContainer: {
-    marginVertical: 4
+    marginVertical: 3
   },
   myMessage: {
     alignItems: 'flex-end'
@@ -308,64 +365,91 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 20
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2
   },
   myMessageBubble: {
-    backgroundColor: '#4f46e5'
+    backgroundColor: '#E0485A',
+    borderBottomRightRadius: 4
   },
   otherMessageBubble: {
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb'
+    borderBottomLeftRadius: 4
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 20
+    lineHeight: 22
   },
   myMessageText: {
     color: '#fff'
   },
   otherMessageText: {
-    color: '#111827'
+    color: '#333'
   },
   messageTime: {
-    fontSize: 12,
-    marginTop: 4
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'right'
   },
   myMessageTime: {
-    color: '#e0e7ff'
+    color: 'rgba(255, 255, 255, 0.7)'
   },
   otherMessageTime: {
-    color: '#6b7280'
+    color: '#999'
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 16,
+  inputWrapper: {
+    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
-    backgroundColor: '#fff'
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 5
+  },
+  inputContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12
+  },
+  inputBackground: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#e5e7eb'
   },
   textInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 12,
-    maxHeight: 100,
-    fontSize: 16
+    paddingVertical: 8,
+    fontSize: 16,
+    color: '#333',
+    maxHeight: 120,
+    minHeight: 40
   },
   sendButton: {
-    backgroundColor: '#4f46e5',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    backgroundColor: '#E0485A',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    marginLeft: 8,
+    shadowColor: '#E0485A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4
   },
   sendButtonDisabled: {
-    backgroundColor: '#9ca3af'
+    backgroundColor: '#ccc',
+    shadowOpacity: 0
   }
 });

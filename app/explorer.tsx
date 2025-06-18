@@ -89,7 +89,7 @@ export default function ExplorerPage() {
           headerBackTitleVisible: false,
         }} 
       />
-      r
+      
       <ScrollView style={styles.scrollContainer}>
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>Trouver une mission</Text>

@@ -57,7 +57,7 @@ export const useAnnonce = () => {
           email: data.contact.email || undefined,
           telephone: data.contact.telephone || undefined
         } : undefined,
-        utilisateurId: user.id,
+        user_id: user.id,  // ✅ Correction: user_id au lieu de utilisateurId
         statut: 'active' as AnnonceStatusType
       };
 
@@ -94,7 +94,7 @@ export const useAnnonce = () => {
         return false;
       }
 
-      if (annonce.utilisateurId !== user.id) {
+      if (annonce.user_id !== user.id) {
         setError('Vous n\'êtes pas autorisé à modifier cette annonce');
         return false;
       }
@@ -153,7 +153,7 @@ export const useAnnonce = () => {
         return false;
       }
 
-      if (annonce.utilisateurId !== user.id) {
+      if (annonce.user_id !== user.id) {
         setError('Vous n\'êtes pas autorisé à supprimer cette annonce');
         return false;
       }

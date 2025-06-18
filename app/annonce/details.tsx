@@ -175,7 +175,12 @@ export default function AnnonceDetailsScreen() {
       console.log("❌ [CONTACT] Annonce ou user_id manquant");
       console.log("❌ [CONTACT] Annonce présente:", !!annonce);
       console.log("❌ [CONTACT] user_id présent:", !!annonce?.user_id);
-      Alert.alert("Erreur", "Impossible de contacter l'organisateur de cette annonce.");
+      
+      const errorMessage = !annonce 
+        ? "Annonce introuvable" 
+        : "Cette annonce n'a pas d'organisateur associé. Veuillez contacter le support ou réessayer plus tard.";
+      
+      Alert.alert("Impossible de contacter", errorMessage);
       return;
     }
 
@@ -256,7 +261,7 @@ export default function AnnonceDetailsScreen() {
 
   // Fonction pour supprimer l'annonce
   const handleDelete = () => {
-    if (!user || !annonce || !annonce.utilisateurId || user.id !== annonce.utilisateurId) {
+    if (!user || !annonce || !annonce.user_id || user.id !== annonce.user_id) {
       return;
     }
     
@@ -477,17 +482,17 @@ export default function AnnonceDetailsScreen() {
         <TouchableOpacity 
           style={[
             styles.actionButton, 
-            (annonce && annonce.utilisateurId === user?.id) ? styles.ownerButton : (hasReserved ? styles.cancelButton : styles.reserverButton),
+            (annonce && annonce.user_id === user?.id) ? styles.ownerButton : (hasReserved ? styles.cancelButton : styles.reserverButton),
             isReservationLoading && styles.disabledButton
           ]}
           onPress={handleReservation}
-          disabled={isReservationLoading || (annonce && annonce.utilisateurId === user?.id)}
+          disabled={isReservationLoading || (annonce && annonce.user_id === user?.id)}
         >
           {isReservationLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              {(annonce && annonce.utilisateurId === user?.id) ? (
+              {(annonce && annonce.user_id === user?.id) ? (
                 <>
                   <Ionicons name="person" size={22} color="#fff" />
                   <Text style={styles.actionButtonText}>VOTRE MISSION</Text>
