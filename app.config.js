@@ -64,7 +64,7 @@ module.exports = {
 
       // Autres variables d'environnement si nécessaire
       eas: {
-        projectId: "your-project-id",
+        projectId: "59a1fa32-b6d9-46a6-96e4-d131c9a2fc03",
       },
     },
   },
